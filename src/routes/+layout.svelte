@@ -17,7 +17,7 @@
 
 <div
 	class="flex flex-col min-h-screen text-white font-sans selection:bg-[#FF605C] selection:text-white relative"
-	style="background: radial-gradient(ellipse 50% 50% at 0% 0%, #4a0a09 0%, #200404 40%, #000000 100%) no-repeat, #000000;"
+	style="background: radial-gradient(ellipse 58% 58% at 0% 0%, #4a0a09 0%, #200404 40%, #000000 100%) no-repeat, #000000;"
 >
 	<!-- Glowing Pixel Grid Background (only on non-view routes) -->
 	{#if !isViewRoute}
