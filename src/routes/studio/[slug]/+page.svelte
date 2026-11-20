@@ -51,7 +51,7 @@
 	<title>{preset.title} — asciing.app Studio</title>
 </svelte:head>
 
-<div class="flex-1 flex flex-row w-full h-[calc(100vh-48px)] overflow-hidden bg-[#09090b] relative">
+<div class="flex-1 flex flex-row w-full h-screen overflow-hidden bg-[#000000] relative">
 	<!-- Canvas Viewport Area -->
 	<div class="flex-1 h-full min-w-0 relative">
 		<CanvasViewport {preset} {params} {assets} />
