@@ -59,14 +59,14 @@
 			placeholder="Paste share code or /view#v= URL to load creation..."
 			bind:value={inputCode}
 			onkeydown={handleKeyDown}
-			class="w-full bg-[#000000] border border-[#27272a] focus:border-[#FF605C] pl-10 pr-36 py-3 text-white placeholder:text-white/40 font-sans text-xs transition-colors focus:outline-none"
+			class="w-full bg-[#000000] border border-[#27272a] focus:border-[#FF605C] pl-9 sm:pl-10 pr-28 sm:pr-36 py-2.5 sm:py-3 text-white placeholder:text-white/40 font-sans text-xs transition-colors focus:outline-none"
 		/>
-		<div class="absolute right-1.5 flex items-center gap-1.5">
+		<div class="absolute right-1 sm:right-1.5 flex items-center gap-1 sm:gap-1.5">
 			<button
 				type="button"
 				onclick={() => handleOpen('studio')}
 				disabled={!inputCode.trim()}
-				class="px-3 py-1.5 bg-transparent border border-[#27272a] hover:border-[#FF605C] hover:text-[#FF605C] disabled:opacity-30 text-white font-sans text-[11px] font-medium transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
+				class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-transparent border border-[#27272a] hover:border-[#FF605C] hover:text-[#FF605C] disabled:opacity-30 text-white font-sans text-[10px] sm:text-[11px] font-medium transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
 			>
 				STUDIO
 			</button>
@@ -74,7 +74,7 @@
 				type="button"
 				onclick={() => handleOpen('view')}
 				disabled={!inputCode.trim()}
-				class="px-3 py-1.5 bg-[#FF605C] hover:bg-[#e04f4b] disabled:opacity-30 text-white font-sans text-[11px] font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
+				class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#FF605C] hover:bg-[#e04f4b] disabled:opacity-30 text-white font-sans text-[10px] sm:text-[11px] font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
 			>
 				VIEW
 			</button>
