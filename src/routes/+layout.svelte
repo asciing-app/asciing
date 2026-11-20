@@ -3,6 +3,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import type { LayoutProps } from './$types';
 	import { page } from '$app/state';
+	import PixelGridBackground from '#lib/components/PixelGridBackground.svelte';
 
 	let { children }: LayoutProps = $props();
 
@@ -14,33 +15,16 @@
 	<title>asciing.app — generative creative coding studio</title>
 </svelte:head>
 
-<div class="flex flex-col min-h-screen bg-[#09090b] text-[#fafafa] font-mono selection:bg-[#38bdf8] selection:text-black">
+<div
+	class="flex flex-col min-h-screen text-white font-sans selection:bg-[#FF605C] selection:text-white relative"
+	style="background: radial-gradient(ellipse 50% 50% at 0% 0%, #4a0a09 0%, #200404 40%, #000000 100%) no-repeat, #000000;"
+>
+	<!-- Glowing Pixel Grid Background (only on non-view routes) -->
 	{#if !isViewRoute}
-		<header class="h-12 border-b border-[#27272a] px-4 flex items-center justify-between bg-[#09090b]/80 backdrop-blur shrink-0 z-40">
-			<div class="flex items-center gap-6">
-				<a href="/" class="flex items-center gap-2 group">
-					<span class="w-3 h-3 bg-[#38bdf8] group-hover:scale-110 transition-transform"></span>
-					<span class="font-bold tracking-wider text-sm text-[#fafafa]">asciing.app</span>
-				</a>
-				<nav class="flex items-center gap-4 text-xs text-[#a1a1aa]">
-					<a href="/" class="hover:text-[#fafafa] transition-colors">GALLERY</a>
-				</nav>
-			</div>
-			<div class="flex items-center gap-3 text-xs text-[#a1a1aa]">
-				<span class="text-[11px] text-[#71717a] hidden sm:inline">ZERO-BACKEND STUDIO</span>
-				<a
-					href="https://github.com"
-					target="_blank"
-					rel="noreferrer"
-					class="hover:text-[#fafafa] transition-colors"
-				>
-					GITHUB
-				</a>
-			</div>
-		</header>
+		<PixelGridBackground />
 	{/if}
 
-	<main class="flex-1 flex flex-col min-h-0 relative">
+	<main class="flex-1 flex flex-col min-h-0 relative z-10">
 		{@render children()}
 	</main>
 </div>
