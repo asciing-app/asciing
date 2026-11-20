@@ -16,10 +16,15 @@ export interface CanvasLoopHandle {
 	isPaused: () => boolean;
 }
 
+export interface CanvasLoopOptions {
+	maxDpr?: number;
+}
+
 export function createCanvasLoop(
 	canvas: HTMLCanvasElement,
 	container: HTMLElement,
-	onFrame: FrameCallback
+	onFrame: FrameCallback,
+	options?: CanvasLoopOptions
 ): CanvasLoopHandle {
 	const ctx = canvas.getContext('2d', { alpha: false });
 	if (!ctx) {
@@ -38,7 +43,9 @@ export function createCanvasLoop(
 		const rect = container.getBoundingClientRect();
 		width = Math.max(1, Math.floor(rect.width));
 		height = Math.max(1, Math.floor(rect.height));
-		dpr = window.devicePixelRatio || 1;
+		const rawDpr = window.devicePixelRatio || 1;
+		const maxDpr = options?.maxDpr ?? 2;
+		dpr = Math.min(rawDpr, maxDpr);
 
 		canvas.width = Math.floor(width * dpr);
 		canvas.height = Math.floor(height * dpr);

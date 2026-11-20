@@ -38,12 +38,20 @@
 
 			const img = new Image();
 			img.onload = () => {
+				const MAX_DIM = 512;
+				let targetW = img.naturalWidth || img.width;
+				let targetH = img.naturalHeight || img.height;
+				if (targetW > MAX_DIM || targetH > MAX_DIM) {
+					const scale = Math.min(MAX_DIM / targetW, MAX_DIM / targetH);
+					targetW = Math.max(1, Math.round(targetW * scale));
+					targetH = Math.max(1, Math.round(targetH * scale));
+				}
 				const offscreen = document.createElement('canvas');
-				offscreen.width = img.naturalWidth || img.width;
-				offscreen.height = img.naturalHeight || img.height;
+				offscreen.width = targetW;
+				offscreen.height = targetH;
 				const ctx = offscreen.getContext('2d');
 				if (ctx) {
-					ctx.drawImage(img, 0, 0);
+					ctx.drawImage(img, 0, 0, targetW, targetH);
 					assets['image'] = offscreen;
 				}
 			};

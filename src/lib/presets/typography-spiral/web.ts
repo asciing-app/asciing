@@ -1,109 +1,169 @@
 import { createCanvasLoop } from '../../engine/canvas.js';
 import type { MountContext } from '../../types/preset.js';
+import { ATLAS_CELL_SIZE, ATLAS_FONT_SIZE, GlyphAtlas, ASCII_RAMP } from './atlas.js';
+import { LuminanceSampler } from './luminance.js';
+import { SpiralGeometryCache } from './spiral.js';
 
 export function mountWeb(ctx: MountContext): () => void {
 	const { canvas, container, getParams, getAssets } = ctx;
 
-	const loop = createCanvasLoop(canvas, container, ({ ctx: c, width, height, time }) => {
-		const params = getParams();
-		const assets = getAssets();
+	const luminanceSampler = new LuminanceSampler();
+	const spiralCache = new SpiralGeometryCache();
+	const glyphAtlas = new GlyphAtlas();
 
-		const speed = Number(params.speed ?? 0.5);
-		const baseFontSize = Number(params.fontSize ?? 14);
-		const spiralGap = Number(params.spiralDensity ?? 18);
-		const phrase = String(params.text ?? 'ASCIING APP CREATIVE STUDIO ZERO BACKEND PRIVACY FIRST ');
-		const textColor = String(params.textColor ?? '#38bdf8');
-		const invert = Boolean(params.invert ?? false);
+	let orbitAngle = 0.0;
+	let lastAlpha = -1.0;
 
-		// Dark canvas background
-		c.fillStyle = '#09090b';
-		c.fillRect(0, 0, width, height);
+	// Cap DPR at 1.5 for ultra-high-density spiral performance
+	const loop = createCanvasLoop(
+		canvas,
+		container,
+		({ ctx: c, width, height, dt, dpr }) => {
+			const params = getParams();
+			const assets = getAssets();
 
-		const centerX = width / 2;
-		const centerY = height / 2;
-		const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
+			// Sync image asset reference (rebuilds Float32Array strictly when reference changes)
+			luminanceSampler.syncAsset(assets['image']);
 
-		// Get offscreen image or procedural sample source
-		const userImageCanvas = assets['image'] as HTMLCanvasElement | undefined;
-		let imgCtx: CanvasRenderingContext2D | null = null;
-		let imgWidth = 0;
-		let imgHeight = 0;
+			const ringSpacing = Math.max(10, Number(params.ringSpacing ?? 14));
+			const orbitSpeed = Number(params.speed ?? 0.15);
+			const contrast = Number(params.contrast ?? 1.25);
+			const invert = Boolean(params.invert ?? false);
+			const mode = String(params.mode ?? 'flowing');
+			const phrase = String(params.text ?? 'ASCIING // ARCHIMEDEAN SPIRAL // ');
+			const textColor = String(params.textColor ?? '#fafafa');
+			const bgColor = String(params.bgColor ?? '#09090b');
 
-		if (userImageCanvas && userImageCanvas.width > 0 && userImageCanvas.height > 0) {
-			imgCtx = userImageCanvas.getContext('2d');
-			imgWidth = userImageCanvas.width;
-			imgHeight = userImageCanvas.height;
-		}
+			// Get or update pre-baked glyph sprite atlas
+			const atlasData = glyphAtlas.getAtlas(phrase, mode, textColor);
+			if (!atlasData) return;
 
-		c.textAlign = 'center';
-		c.textBaseline = 'middle';
+			const { canvas: atlasCanvas, sprites, phraseIndices, halftoneIndices } = atlasData;
 
-		const rotationOffset = time * speed;
-		let currentAngle = rotationOffset;
-		let charIndex = 0;
-		const phraseLength = phrase.length || 1;
+			// Reset transform to DPR coordinate system before clear
+			c.setTransform(dpr, 0, 0, dpr, 0, 0);
+			c.globalAlpha = 1.0;
+			c.fillStyle = bgColor;
+			c.fillRect(0, 0, width, height);
 
-		// Archimedean spiral r = b * theta
-		const b = spiralGap / (2 * Math.PI);
-		let currentRadius = 12;
+			// Fast image smoothing for sprite downscaling
+			c.imageSmoothingEnabled = true;
+			c.imageSmoothingQuality = 'low';
 
-		while (currentRadius < maxRadius) {
-			const x = centerX + currentRadius * Math.cos(currentAngle);
-			const y = centerY + currentRadius * Math.sin(currentAngle);
+			// Smooth orbital angle accumulation clamped against long pause jumps
+			const safeDt = Math.min(dt, 0.05);
+			orbitAngle += orbitSpeed * safeDt;
 
-			// Sample luminance from uploaded image or procedural fallback
-			let luminance = 0.5;
+			// Single trig evaluation per frame
+			const cosOrbit = Math.cos(orbitAngle);
+			const sinOrbit = Math.sin(orbitAngle);
 
-			if (imgCtx && imgWidth > 0 && imgHeight > 0) {
-				// Map canvas (x, y) to image coordinates
-				const imgX = Math.floor((x / width) * imgWidth);
-				const imgY = Math.floor((y / height) * imgHeight);
+			const nominalCharSpacing = ringSpacing * 0.62;
+			const geometry = spiralCache.getGeometry(width, height, ringSpacing, nominalCharSpacing);
+			const count = geometry.count;
+			if (count === 0) return;
 
-				if (imgX >= 0 && imgX < imgWidth && imgY >= 0 && imgY < imgHeight) {
-					try {
-						const pixel = imgCtx.getImageData(imgX, imgY, 1, 1).data;
-						luminance = (pixel[0] * 0.299 + pixel[1] * 0.587 + pixel[2] * 0.114) / 255;
-					} catch {
-						luminance = 0.5;
-					}
+			const cx = width / 2.0;
+			const cy = height / 2.0;
+			const portraitRadius = geometry.maxRadius;
+			const portraitDiameter = portraitRadius * 2.0;
+
+			const maxFontSize = ringSpacing * 1.08;
+			const minFontSize = Math.max(4.0, ringSpacing * 0.25);
+			const fontRange = maxFontSize - minFontSize;
+
+			const rArr = geometry.r;
+			const cosThetaArr = geometry.cosTheta;
+			const sinThetaArr = geometry.sinTheta;
+			const cosTanArr = geometry.cosTan;
+			const sinTanArr = geometry.sinTan;
+
+			const phraseLen = phraseIndices.length;
+			const rampLen = halftoneIndices.length;
+			const halfCell = ATLAS_CELL_SIZE / 2; // 32
+			const invAtlasFontSize = 1.0 / ATLAS_FONT_SIZE;
+
+			lastAlpha = -1.0;
+
+			for (let i = 0; i < count; i++) {
+				const r = rArr[i];
+
+				// Angle-addition identity: zero per-node Math.sin / Math.cos
+				// a = theta + orbitAngle
+				const cosA = cosThetaArr[i] * cosOrbit - sinThetaArr[i] * sinOrbit;
+				const sinA = sinThetaArr[i] * cosOrbit + cosThetaArr[i] * sinOrbit;
+
+				const x = cx + r * cosA;
+				const y = cy + r * sinA;
+
+				// Sample stationary portrait buffer
+				const normX = (x - (cx - portraitRadius)) / portraitDiameter;
+				const normY = (y - (cy - portraitRadius)) / portraitDiameter;
+
+				const lum = luminanceSampler.sampleLuminance(normX, normY, contrast, invert);
+
+				// Dark cutoff: skip drawing to eliminate draw calls and keep dark background crisp
+				if (lum < 0.08) continue;
+
+				// Fast sprite lookup
+				let spriteIdx = 0;
+				if (mode === 'halftone') {
+					const rampIdx = Math.min(rampLen - 1, Math.floor(lum * rampLen));
+					spriteIdx = halftoneIndices[rampIdx];
+				} else {
+					spriteIdx = phraseIndices[i % phraseLen];
 				}
-			} else {
-				// Procedural harmonic fallback pattern
-				const dx = (x - centerX) / 80;
-				const dy = (y - centerY) / 80;
-				const wave = Math.sin(Math.sqrt(dx * dx + dy * dy) - time * 2) * Math.cos(currentAngle * 3);
-				luminance = (wave + 1) * 0.5;
+
+				const sprite = sprites[spriteIdx];
+				if (!sprite || sprite.char === ' ') continue;
+
+				// Quantized alpha assignment to minimize GPU pipeline state flushes
+				const rawAlpha = Math.min(1.0, 0.25 + lum * 0.75);
+				const qAlpha = Math.round(rawAlpha * 10) / 10;
+				if (qAlpha !== lastAlpha) {
+					c.globalAlpha = qAlpha;
+					lastAlpha = qAlpha;
+				}
+
+				// Angle-addition identity for local tangent angle:
+				// phi = alpha_tan + orbitAngle
+				const cosPhi = cosTanArr[i] * cosOrbit - sinTanArr[i] * sinOrbit;
+				const sinPhi = sinTanArr[i] * cosOrbit + cosTanArr[i] * sinOrbit;
+
+				// Midtone lift curve so midtones don't look overly thin
+				const lCurve = Math.pow(lum, 0.8);
+				const fontSize = minFontSize + lCurve * fontRange;
+				const scale = dpr * fontSize * invAtlasFontSize;
+
+				// Direct affine transform matrix (incorporating DPR, scale, rotation, and translation)
+				// Zero ctx.save() or ctx.restore() calls
+				c.setTransform(
+					scale * cosPhi,
+					scale * sinPhi,
+					-scale * sinPhi,
+					scale * cosPhi,
+					dpr * x,
+					dpr * y
+				);
+
+				c.drawImage(
+					atlasCanvas,
+					sprite.sx,
+					sprite.sy,
+					ATLAS_CELL_SIZE,
+					ATLAS_CELL_SIZE,
+					-halfCell,
+					-halfCell,
+					ATLAS_CELL_SIZE,
+					ATLAS_CELL_SIZE
+				);
 			}
 
-			if (invert) {
-				luminance = 1 - luminance;
-			}
-
-			const char = phrase[charIndex % phraseLength];
-			charIndex++;
-
-			// Scale character font size and opacity based on sampled luminance
-			const effectiveFontSize = Math.max(7, Math.floor(baseFontSize * (0.4 + luminance * 1.2)));
-			c.font = `600 ${effectiveFontSize}px "JetBrains Mono", monospace`;
-
-			c.save();
-			c.translate(x, y);
-			c.rotate(currentAngle + Math.PI / 2);
-
-			const alpha = Math.max(0.15, Math.min(1.0, luminance * 1.3));
-			c.globalAlpha = alpha;
-			c.fillStyle = textColor;
-			c.fillText(char, 0, 0);
-			c.restore();
-
-			// Advance theta so characters don't overlap as radius expands
-			// arc length s = r * dTheta => dTheta = charWidth / r
-			const charSpacing = effectiveFontSize * 0.9;
-			const deltaAngle = Math.max(0.04, charSpacing / Math.max(10, currentRadius));
-			currentAngle += deltaAngle;
-			currentRadius = b * (currentAngle - rotationOffset);
-		}
-	});
+			// Restore standard DPR transform at end of frame
+			c.setTransform(dpr, 0, 0, dpr, 0, 0);
+		},
+		{ maxDpr: 1.5 }
+	);
 
 	return () => {
 		loop.destroy();

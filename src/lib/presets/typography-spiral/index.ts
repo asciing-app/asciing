@@ -5,13 +5,13 @@ export const typographySpiralPreset: PresetDefinition = {
 	slug: 'typography-spiral',
 	title: 'Typography Spiral',
 	description:
-		'Client-side luminance sampling mapped to Archimedean spiral typography. Upload an image locally for real-time ASCII halftone portraiture.',
-	tags: ['2D', 'Typography', 'Image Halftone', 'Client Privacy'],
-	version: 1,
+		'Constant arc-length Archimedean spiral orbiting stationary halftone portraiture with cached bilinear luminance sampling.',
+	tags: ['2D', 'Typography', 'Image Halftone', 'Archimedean Spiral', 'Client Privacy'],
+	version: 2,
 	controls: [
 		{
 			key: 'image',
-			label: 'Custom Image (Client Only)',
+			label: 'Local Portrait Upload',
 			type: 'image',
 			accept: 'image/*'
 		},
@@ -20,47 +20,63 @@ export const typographySpiralPreset: PresetDefinition = {
 			label: 'Spiral Phrase',
 			type: 'text',
 			placeholder: 'ENTER TEXT HERE...',
-			maxLength: 80,
-			default: 'ASCIING APP CREATIVE STUDIO ZERO BACKEND PRIVACY FIRST '
+			maxLength: 160,
+			default: 'ASCIING // ARCHIMEDEAN SPIRAL // '
 		},
 		{
-			key: 'fontSize',
-			label: 'Base Font Size (px)',
-			type: 'slider',
-			min: 9,
-			max: 28,
-			step: 1,
-			default: 14
+			key: 'mode',
+			label: 'Render Mode',
+			type: 'select',
+			options: [
+				{ label: 'Flowing Text', value: 'flowing' },
+				{ label: 'ASCII Halftone', value: 'halftone' }
+			],
+			default: 'flowing'
 		},
 		{
-			key: 'spiralDensity',
-			label: 'Spiral Gap (px)',
+			key: 'ringSpacing',
+			label: 'Ring Spacing (px)',
 			type: 'slider',
 			min: 10,
-			max: 36,
+			max: 32,
 			step: 1,
-			default: 18
+			default: 16
 		},
 		{
 			key: 'speed',
-			label: 'Rotation Speed',
+			label: 'Orbit Speed',
 			type: 'slider',
-			min: -2.0,
-			max: 2.0,
-			step: 0.1,
-			default: 0.4
+			min: 0.0,
+			max: 1.2,
+			step: 0.05,
+			default: 0.15
 		},
 		{
-			key: 'textColor',
-			label: 'Glyph Color',
-			type: 'color',
-			default: '#38bdf8'
+			key: 'contrast',
+			label: 'Contrast',
+			type: 'slider',
+			min: 0.5,
+			max: 2.5,
+			step: 0.05,
+			default: 1.25
 		},
 		{
 			key: 'invert',
 			label: 'Invert Luminance',
 			type: 'toggle',
 			default: false
+		},
+		{
+			key: 'textColor',
+			label: 'Text Color',
+			type: 'color',
+			default: '#fafafa'
+		},
+		{
+			key: 'bgColor',
+			label: 'Background Color',
+			type: 'color',
+			default: '#09090b'
 		}
 	],
 	mountWeb

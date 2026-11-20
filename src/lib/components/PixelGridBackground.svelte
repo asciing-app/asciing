@@ -63,37 +63,40 @@
 				baseCtx.fillStyle = CONFIG.backgroundColor;
 				baseCtx.fillRect(0, 0, width, height);
 
-				const halfW = width * 0.5;
-				const halfH = height * 0.5;
+				const gradW = width * 0.58;
+				const gradH = height * 0.58;
 
-				// Horizontal gradient: saturated glowing red, stopping at half width and half height
-				const bgGrad = baseCtx.createLinearGradient(0, 0, halfW, 0);
+				// Horizontal gradient: saturated glowing red, stopping at 58% width
+				const bgGrad = baseCtx.createLinearGradient(0, 0, gradW, 0);
 				bgGrad.addColorStop(0, '#5c0d0b'); // saturated glowing red on the far left
-				bgGrad.addColorStop(0.2, '#3d0807');
-				bgGrad.addColorStop(0.5, '#180303');
-				bgGrad.addColorStop(1, '#000000'); // stops at half the page
+				bgGrad.addColorStop(0.25, '#3d0807');
+				bgGrad.addColorStop(0.6, '#180303');
+				bgGrad.addColorStop(1, '#000000'); // stops at 65% of the page
 
 				baseCtx.fillStyle = bgGrad;
-				baseCtx.fillRect(0, 0, halfW, halfH);
+				baseCtx.fillRect(0, 0, width, height);
 
-				// Vertical fade down to black: cuts off gradient at lower half
-				const fadeDownGrad = baseCtx.createLinearGradient(0, 0, 0, halfH);
+				// Vertical fade down to black: smoothly blends into solid black across full canvas
+				const fadeDownGrad = baseCtx.createLinearGradient(0, 0, 0, gradH);
 				fadeDownGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-				fadeDownGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.25)');
+				fadeDownGrad.addColorStop(0.4, 'rgba(0, 0, 0, 0.25)');
+				fadeDownGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0.85)');
 				fadeDownGrad.addColorStop(1, 'rgba(0, 0, 0, 1)');
 
 				baseCtx.fillStyle = fadeDownGrad;
-				baseCtx.fillRect(0, 0, halfW, halfH);
+				baseCtx.fillRect(0, 0, width, height);
 
-				// Saturated glowing atmospheric aura in top-left, strictly within upper half
-				const auraGrad = baseCtx.createRadialGradient(0, 0, 0, 0, 0, Math.min(halfW, halfH) * 1.15);
+				// Saturated glowing atmospheric aura in top-left, fading smoothly to 0 alpha
+				const auraRadius = Math.min(gradW, gradH) * 1.25;
+				const auraGrad = baseCtx.createRadialGradient(0, 0, 0, 0, 0, auraRadius);
 				auraGrad.addColorStop(0, 'rgba(255, 65, 60, 0.42)'); // vibrant saturated glow
 				auraGrad.addColorStop(0.35, 'rgba(255, 65, 60, 0.18)');
-				auraGrad.addColorStop(0.75, 'rgba(255, 65, 60, 0.03)');
+				auraGrad.addColorStop(0.7, 'rgba(255, 65, 60, 0.03)');
+				auraGrad.addColorStop(0.98, 'rgba(0, 0, 0, 0)');
 				auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
 				baseCtx.fillStyle = auraGrad;
-				baseCtx.fillRect(0, 0, halfW, halfH);
+				baseCtx.fillRect(0, 0, width, height);
 
 				for (let row = 0; row < rows; row++) {
 					for (let col = 0; col < cols; col++) {
