@@ -67,7 +67,7 @@
 	<title>{currentPreset ? `${currentPreset.title} — asciing.app` : 'asciing.app Viewer'}</title>
 </svelte:head>
 
-<div class="fixed inset-0 w-screen h-screen bg-[#09090b] overflow-hidden select-none">
+<div class="fixed inset-0 w-screen h-screen bg-[#000000] overflow-hidden select-none">
 	{#if currentPreset}
 		<CanvasViewport preset={currentPreset} params={currentParams} showHUD={true} />
 
@@ -75,15 +75,15 @@
 		<div class="absolute top-4 right-4 z-30 flex items-center gap-2">
 			<a
 				href={studioLink}
-				class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#121215]/80 hover:bg-[#18181c] text-[#fafafa] border border-[#27272a] text-xs font-mono backdrop-blur transition-all duration-200 hover:border-[#38bdf8]"
+				class="flex items-center gap-1.5 px-3 py-1.5 bg-[#000000] hover:bg-[#121212] text-white border border-[#27272a] hover:border-[#FF605C] text-xs font-mono transition-colors"
 			>
 				<span>EDIT IN STUDIO</span>
-				<span class="text-[#38bdf8]">↗</span>
+				<span class="text-[#FF605C]">↗</span>
 			</a>
 		</div>
 
 		{#if errorNotice}
-			<div class="absolute top-4 left-4 z-30 px-3 py-1.5 rounded bg-[#ef4444]/20 border border-[#ef4444]/40 text-[#fca5a5] text-xs font-mono">
+			<div class="absolute top-4 left-4 z-30 px-3 py-1.5 bg-[#000000] border border-[#FF605C] text-white text-xs font-mono">
 				{errorNotice}
 			</div>
 		{/if}
