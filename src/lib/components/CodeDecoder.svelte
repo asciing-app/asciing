@@ -27,7 +27,6 @@
 			return;
 		}
 
-		// Extract raw compressed hash part
 		let rawHash = inputCode.trim();
 		const hashIdx = rawHash.indexOf('#');
 		if (hashIdx !== -1) {
@@ -52,22 +51,22 @@
 	}
 </script>
 
-<div class="w-full max-w-2xl mx-auto space-y-2 font-mono text-xs">
+<div class="w-full space-y-2 font-mono text-xs">
 	<div class="relative flex items-center">
-		<span class="absolute left-3 text-[#71717a] font-mono text-xs select-none">#v=</span>
+		<span class="absolute left-3 text-white font-mono text-xs select-none">#v=</span>
 		<input
 			type="text"
 			placeholder="Paste share code or /view#v= URL to load creation..."
 			bind:value={inputCode}
 			onkeydown={handleKeyDown}
-			class="w-full bg-[#121215] border border-[#27272a] focus:border-[#38bdf8] rounded-lg pl-10 pr-32 py-2.5 text-[#fafafa] placeholder:text-[#71717a] font-mono text-xs transition-colors focus:outline-none"
+			class="w-full bg-[#000000] border border-[#27272a] focus:border-[#FF605C] pl-10 pr-36 py-3 text-white placeholder:text-white/40 font-mono text-xs transition-colors focus:outline-none"
 		/>
-		<div class="absolute right-1.5 flex items-center gap-1">
+		<div class="absolute right-1.5 flex items-center gap-1.5">
 			<button
 				type="button"
 				onclick={() => handleOpen('studio')}
 				disabled={!inputCode.trim()}
-				class="px-2.5 py-1.5 rounded bg-[#27272a] hover:bg-[#3f3f46] disabled:opacity-40 disabled:hover:bg-[#27272a] text-[#fafafa] font-mono text-[11px] font-medium transition-colors cursor-pointer disabled:cursor-not-allowed"
+				class="px-3 py-1.5 bg-transparent border border-[#27272a] hover:border-[#FF605C] hover:text-[#FF605C] disabled:opacity-30 text-white font-mono text-[11px] font-medium transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
 			>
 				STUDIO
 			</button>
@@ -75,7 +74,7 @@
 				type="button"
 				onclick={() => handleOpen('view')}
 				disabled={!inputCode.trim()}
-				class="px-2.5 py-1.5 rounded bg-[#38bdf8] hover:bg-[#0284c7] disabled:opacity-40 disabled:hover:bg-[#38bdf8] text-[#09090b] font-mono text-[11px] font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed"
+				class="px-3 py-1.5 bg-[#FF605C] hover:bg-[#e04f4b] disabled:opacity-30 text-white font-mono text-[11px] font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
 			>
 				VIEW
 			</button>
@@ -83,12 +82,12 @@
 	</div>
 
 	{#if matchedPreset}
-		<div class="flex items-center gap-2 text-[11px] text-[#10b981] px-1">
-			<span>✔</span>
+		<div class="flex items-center gap-2 text-[11px] text-white px-1">
+			<span class="text-[#FF605C]">✔</span>
 			<span>Recognized preset: <strong>{matchedPreset.title}</strong></span>
 		</div>
 	{:else if inputCode.trim() && !decoded}
-		<div class="text-[11px] text-[#ef4444] px-1">
+		<div class="text-[11px] text-[#FF605C] px-1">
 			{errorMessage || 'Enter a valid compressed state hash'}
 		</div>
 	{/if}
