@@ -51,10 +51,11 @@
 		const ctx = canvasEl.getContext('2d');
 		if (ctx) {
 			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-			ctx.font = '11px "JetBrains Mono", "Geist Mono", monospace';
+			const fontSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 12 : 11;
+			ctx.font = `${fontSize}px "JetBrains Mono", "Geist Mono", monospace`;
 			const measured = ctx.measureText('M').width;
-			charWidth = measured > 0 ? measured : 6.6;
-			charHeight = 15;
+			charWidth = measured > 0 ? measured : (fontSize === 12 ? 7.2 : 6.6);
+			charHeight = fontSize === 12 ? 16 : 15;
 			cols = Math.max(10, Math.floor((cssW - 24) / charWidth));
 			rows = Math.max(5, Math.floor((cssH - 20) / charHeight));
 		}
@@ -71,7 +72,8 @@
 
 		ctx.clearRect(0, 0, cssW, cssH);
 
-		ctx.font = '11px "JetBrains Mono", "Geist Mono", monospace';
+		const fontSize = typeof window !== 'undefined' && window.innerWidth >= 640 ? 12 : 11;
+		ctx.font = `${fontSize}px "JetBrains Mono", "Geist Mono", monospace`;
 		ctx.textBaseline = 'top';
 
 		const paddingX = 12;
@@ -238,25 +240,25 @@
 	});
 </script>
 
-<div class="w-full bg-white/[0.015] backdrop-blur-md overflow-hidden select-none">
+<div class="w-full min-w-0 bg-white/[0.015] backdrop-blur-md overflow-hidden select-none">
 	<!-- Title Bar -->
 	<div
-		class="h-9 px-3.5 bg-black/40 border-b border-white/[0.04] flex items-center justify-between"
+		class="h-9 px-3 sm:px-3.5 bg-black/40 border-b border-white/[0.04] flex items-center justify-between gap-2"
 	>
 		<!-- Left: Window dots + status -->
-		<div class="flex items-center gap-2">
-			<div class="flex items-center gap-1.5" aria-hidden="true">
+		<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+			<div class="flex items-center gap-1.5 shrink-0" aria-hidden="true">
 				<span class="w-2.5 h-2.5 bg-white/10 border border-white/10"></span>
 				<span class="w-2.5 h-2.5 bg-white/10 border border-white/10"></span>
 				<span class="w-2.5 h-2.5 bg-white/10 border border-white/10"></span>
 			</div>
-			<span class="text-[11px] font-mono text-[#a1a1aa] ml-1">
+			<span class="text-[11px] font-mono text-[#a1a1aa] ml-1 truncate">
 				zsh — {cols}×{rows}
 			</span>
 		</div>
 
 		<!-- Right: Action button + Studio link -->
-		<div class="flex items-center gap-3">
+		<div class="flex items-center gap-2 sm:gap-3 shrink-0">
 			{#if simState === 'running'}
 				<button
 					type="button"
@@ -289,7 +291,7 @@
 	<!-- Terminal Body -->
 	<div
 		bind:this={containerEl}
-		class="relative w-full h-[250px] bg-transparent overflow-hidden font-mono text-xs"
+		class="relative w-full h-64 sm:h-72 lg:h-80 xl:h-[26rem] bg-transparent overflow-hidden font-mono text-xs sm:text-sm"
 	>
 		<!-- Continuous 20 FPS Canvas -->
 		<canvas
@@ -300,7 +302,7 @@
 
 		<!-- Prompt / Typing text overlay -->
 		{#if simState === 'prompt' || simState === 'typing'}
-			<div class="p-4 text-xs font-mono leading-relaxed text-[#a1a1aa] select-text">
+			<div class="p-3.5 sm:p-4 text-xs sm:text-sm font-mono leading-relaxed text-[#a1a1aa] select-text">
 				<div>
 					<span class="text-[#71717a]">~/asciing $ </span>
 					<span class="text-[#fafafa]">{typedCommand}</span>
@@ -309,7 +311,7 @@
 				</div>
 			</div>
 		{:else if simState === 'stopped'}
-			<div class="p-4 text-xs font-mono leading-relaxed text-[#a1a1aa] select-text space-y-1">
+			<div class="p-3.5 sm:p-4 text-xs sm:text-sm font-mono leading-relaxed text-[#a1a1aa] select-text space-y-1">
 				<div>
 					<span class="text-[#71717a]">~/asciing $ </span>
 					<span class="text-[#fafafa]">{COMMAND}</span>
