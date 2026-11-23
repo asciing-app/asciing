@@ -23,7 +23,7 @@ export function mountWeb(ctx: MountContext): () => void {
 			const assets = getAssets();
 
 			// Sync image asset reference (rebuilds Float32Array strictly when reference changes)
-			luminanceSampler.syncAsset(assets['image']);
+			luminanceSampler.syncAsset(assets['image'] as ImageData | HTMLCanvasElement | undefined);
 
 			const ringSpacing = Math.max(10, Number(params.ringSpacing ?? 14));
 			const orbitSpeed = Number(params.speed ?? 0.15);
@@ -88,6 +88,9 @@ export function mountWeb(ctx: MountContext): () => void {
 			for (let i = 0; i < count; i++) {
 				const r = rArr[i];
 
+				// 2. Strict outer-radius cutoff: skip points at or beyond the sphere radius
+				if (r >= portraitRadius) continue;
+
 				// Angle-addition identity: zero per-node Math.sin / Math.cos
 				// a = theta + orbitAngle
 				const cosA = cosThetaArr[i] * cosOrbit - sinThetaArr[i] * sinOrbit;
@@ -102,8 +105,8 @@ export function mountWeb(ctx: MountContext): () => void {
 
 				const lum = luminanceSampler.sampleLuminance(normX, normY, contrast, invert);
 
-				// Dark cutoff: skip drawing to eliminate draw calls and keep dark background crisp
-				if (lum < 0.08) continue;
+				// 3. Hard visibility cull threshold after contrast: skip drawing completely
+				if (lum < 0.04) continue;
 
 				// Fast sprite lookup
 				let spriteIdx = 0;
@@ -117,8 +120,8 @@ export function mountWeb(ctx: MountContext): () => void {
 				const sprite = sprites[spriteIdx];
 				if (!sprite || sprite.char === ' ') continue;
 
-				// Quantized alpha assignment to minimize GPU pipeline state flushes
-				const rawAlpha = Math.min(1.0, 0.25 + lum * 0.75);
+				// Smooth alpha scaling starting from threshold up to 1.0 (no stale minimum opacity)
+				const rawAlpha = Math.min(1.0, ((lum - 0.04) / (1.0 - 0.04)) * 0.85 + 0.15);
 				const qAlpha = Math.round(rawAlpha * 10) / 10;
 				if (qAlpha !== lastAlpha) {
 					c.globalAlpha = qAlpha;
