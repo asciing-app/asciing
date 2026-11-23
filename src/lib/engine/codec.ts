@@ -213,13 +213,37 @@ export function decodePresetMicroHash(code: string, allControls?: Record<string,
 }
 
 /**
- * Creates a guaranteed sub-10 character short link via anonymous public shortener API.
+ * Creates a sub-10 character short link on native asciing.app domain via KV store,
+ * falling back to public shortener APIs if backend KV is not active.
  */
-export async function createShortLink(targetUrl: string): Promise<string | null> {
+export async function createShortLink(targetUrl: string, hash?: string): Promise<string | null> {
+	// 1. Try native backend /api/shorten endpoint (asciing.app/s/XXXXXX)
+	if (hash) {
+		try {
+			const res = await fetch('/api/shorten', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ hash })
+			});
+			if (res.ok) {
+				const data = (await res.json()) as { slug?: string; path?: string };
+				if (data.path) {
+					if (typeof window !== 'undefined') {
+						return `${window.location.origin}${data.path}`;
+					}
+					return `https://asciing.app${data.path}`;
+				}
+			}
+		} catch {
+			// Backend unconfigured or unreachable, fallback below
+		}
+	}
+
+	// 2. Fallback to public shortener
 	// is.gd/v.gd require a valid public domain, map localhost to production domain
 	const publicUrl = targetUrl.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, 'https://asciing.app');
 
-	// 1. Try is.gd
+	// 2a. Try is.gd
 	try {
 		const isGdRes = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(publicUrl)}`);
 		if (isGdRes.ok) {
@@ -232,7 +256,7 @@ export async function createShortLink(targetUrl: string): Promise<string | null>
 		// Fall through
 	}
 
-	// 2. Try v.gd
+	// 2b. Try v.gd
 	try {
 		const vGdRes = await fetch(`https://v.gd/create.php?format=json&url=${encodeURIComponent(publicUrl)}`);
 		if (vGdRes.ok) {
