@@ -3,7 +3,7 @@
 	import CanvasViewport from '#lib/components/CanvasViewport.svelte';
 	import ControlDrawer from '#lib/components/ControlDrawer.svelte';
 	import ShareModal from '#lib/components/ShareModal.svelte';
-	import { decodePresetState, getDefaultParams } from '#lib/engine/codec.js';
+	import { decodePresetState, getDefaultParams, hydrateAssetsFromPayload } from '#lib/engine/codec.js';
 	import type { PresetParams, RuntimeAssets } from '#lib/types/preset.js';
 
 	let { data }: PageProps = $props();
@@ -14,7 +14,7 @@
 	let assets = $state<RuntimeAssets>({});
 	let isShareOpen = $state(false);
 
-	function loadStateFromHash() {
+	async function loadStateFromHash() {
 		const defaults = getDefaultParams(preset.controls);
 		if (typeof window === 'undefined') {
 			params = defaults;
@@ -26,6 +26,14 @@
 			const decoded = decodePresetState(hash);
 			if (decoded && decoded.slug === preset.slug) {
 				params = { ...defaults, ...decoded.params };
+				if (decoded.assetPayload) {
+					try {
+						const hydrated = await hydrateAssetsFromPayload(decoded.assetPayload);
+						assets = { ...assets, ...hydrated };
+					} catch (err) {
+						console.error('Failed to hydrate assets from hash:', err);
+					}
+				}
 				return;
 			}
 		}
@@ -51,13 +59,23 @@
 	<title>{preset.title} — asciing.app Studio</title>
 </svelte:head>
 
-<div class="flex-1 flex flex-row w-full h-screen overflow-hidden bg-[#000000] relative">
-	<!-- Canvas Viewport Area -->
-	<div class="flex-1 h-full min-w-0 relative">
+<div class="fixed inset-0 w-full h-full overflow-hidden bg-transparent select-none z-10">
+	<!-- Return to Gallery Pill -->
+	<a
+		href="/"
+		class="fixed top-4 left-4 z-30 flex items-center gap-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white border-0 text-xs font-sans font-medium uppercase tracking-wider transition-colors shadow-lg cursor-pointer"
+		title="Return to Gallery"
+	>
+		<span>←</span>
+		<span>Gallery</span>
+	</a>
+
+	<!-- Canvas Viewport: Fullscreen (100% of screen) -->
+	<div class="absolute inset-0 w-full h-full">
 		<CanvasViewport {preset} {params} {assets} />
 	</div>
 
-	<!-- Collapsible Controls Drawer -->
+	<!-- Collapsible Controls Drawer: Overlaid above the canvas -->
 	<ControlDrawer
 		{preset}
 		bind:params
@@ -69,6 +87,7 @@
 	<ShareModal
 		{preset}
 		{params}
+		{assets}
 		open={isShareOpen}
 		onclose={() => (isShareOpen = false)}
 	/>
