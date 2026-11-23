@@ -55,7 +55,22 @@ export type ControlSchema =
 	| ImageControl;
 
 export type PresetParams = Record<string, string | number | boolean>;
-export type RuntimeAssets = Record<string, ImageData | HTMLCanvasElement>;
+export type RuntimeAssets = Record<string, ImageData | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | unknown>;
+
+export interface WireAssetPayload {
+	/** Asset kind: 'img' for single image, 'anim' for animated frame strip */
+	t: 'img' | 'anim';
+	/** Compact base64 image data URL or strip */
+	d: string;
+	/** Frame width for strip slicing */
+	w?: number;
+	/** Frame height for strip slicing */
+	h?: number;
+	/** Number of frames in strip */
+	count?: number;
+	/** Frame delays in milliseconds */
+	delays?: number[];
+}
 
 export interface MountContext {
 	canvas: HTMLCanvasElement;
@@ -72,5 +87,5 @@ export interface PresetDefinition {
 	version: number;
 	controls: ControlSchema[];
 	mountWeb: (ctx: MountContext) => () => void;
-	generatePython?: (params: PresetParams) => string;
+	generatePython?: (params: PresetParams, assets?: RuntimeAssets) => string;
 }
