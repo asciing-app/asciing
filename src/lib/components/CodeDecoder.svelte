@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { decodePresetState } from '../engine/codec.js';
-	import { getPresetBySlug } from '../presets/registry.js';
+	import { getPresetBySlug, PRESETS } from '../presets/registry.js';
 
 	let inputCode = $state('');
 	let errorMessage = $state<string | null>(null);
 
+	const controlsMap = Object.fromEntries(PRESETS.map((p) => [p.slug, p.controls]));
+
 	let decoded = $derived.by(() => {
 		if (!inputCode.trim()) return null;
-		return decodePresetState(inputCode);
+		return decodePresetState(inputCode, controlsMap);
 	});
 
 	let matchedPreset = $derived.by(() => {
@@ -31,10 +33,10 @@
 		const hashIdx = rawHash.indexOf('#');
 		if (hashIdx !== -1) {
 			rawHash = rawHash.slice(hashIdx);
-		} else if (rawHash.startsWith('v=')) {
+		} else if (rawHash.startsWith('2.') || rawHash.startsWith('v=')) {
 			rawHash = `#${rawHash}`;
 		} else {
-			rawHash = `#v=${rawHash}`;
+			rawHash = `#${rawHash}`;
 		}
 
 		if (mode === 'studio') {
