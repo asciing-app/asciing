@@ -10,6 +10,7 @@ export interface AsciiSettings {
 	contrast: number;
 	invert: boolean;
 	dither: boolean;
+	speed?: number;
 }
 
 export interface DecodedMediaFrame {

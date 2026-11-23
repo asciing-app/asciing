@@ -33,7 +33,8 @@ export function generatePython(params: PresetParams, assets?: RuntimeAssets): st
 			brightness,
 			contrast,
 			invert,
-			dither
+			dither,
+			speed: Number(params.speed ?? 1.0)
 		};
 		return exportPythonScript(frames, settings);
 	}
@@ -49,7 +50,8 @@ export function generatePython(params: PresetParams, assets?: RuntimeAssets): st
 			brightness,
 			contrast,
 			invert,
-			dither
+			dither,
+			speed: Number(params.speed ?? 1.0)
 		};
 		return exportPythonScript([{ bitmap: imageAsset as any, delayMs: 100 }], settings);
 	}

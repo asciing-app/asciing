@@ -17,6 +17,15 @@ export const makeYourOwnPreset: PresetDefinition = {
 			accept: 'image/*,video/*'
 		},
 		{
+			key: 'speed',
+			label: 'Playback Speed',
+			type: 'slider',
+			min: 0.1,
+			max: 3.0,
+			step: 0.1,
+			default: 1.0
+		},
+		{
 			key: 'cols',
 			label: 'Width (Columns)',
 			type: 'slider',

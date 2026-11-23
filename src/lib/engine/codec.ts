@@ -596,9 +596,9 @@ export async function serializeCanvasToPayload(
  */
 export async function serializeFramesToPayload(
 	frames: DecodedMediaFrame[],
-	maxFrames = 10,
-	maxDim = 52,
-	quality = 0.35
+	maxFrames = 48,
+	maxDim = 64,
+	quality = 0.40
 ): Promise<WireAssetPayload | null> {
 	if (typeof document === 'undefined' || !frames || frames.length === 0) return null;
 
@@ -606,14 +606,25 @@ export async function serializeFramesToPayload(
 		return serializeCanvasToPayload(frames[0].bitmap, maxDim, quality);
 	}
 
-	// Sample up to maxFrames evenly
+	const totalOriginalDuration = frames.reduce((acc, f) => acc + Math.max(10, f.delayMs || 100), 0);
 	const total = frames.length;
-	const sampledFrames: DecodedMediaFrame[] = [];
-	const step = total <= maxFrames ? 1 : total / maxFrames;
 
-	for (let i = 0; i < total && sampledFrames.length < maxFrames; i += step) {
+	// Target 20-25 FPS for smooth animation playback across the original duration
+	const targetFps = 20;
+	const idealCount = Math.round((totalOriginalDuration / 1000) * targetFps);
+	const sampleLimit = Math.min(total, Math.max(12, Math.min(maxFrames, idealCount)));
+
+	const sampledFrames: DecodedMediaFrame[] = [];
+	const step = total <= sampleLimit ? 1 : total / sampleLimit;
+
+	for (let i = 0; i < total && sampledFrames.length < sampleLimit; i += step) {
 		sampledFrames.push(frames[Math.floor(i)]);
 	}
+
+	const count = sampledFrames.length;
+	// Calculate accurate frame delay to preserve exact real-world playback duration and smooth FPS
+	const delayPerFrame = Math.max(16, Math.round(totalOriginalDuration / Math.max(1, count)));
+	const delays = sampledFrames.map(() => delayPerFrame);
 
 	const first = sampledFrames[0].bitmap;
 	const srcW = first.width || 320;
@@ -622,7 +633,6 @@ export async function serializeFramesToPayload(
 	const scale = Math.min(1, Math.min(maxDim / srcW, maxDim / srcH));
 	const frameW = Math.max(1, Math.round(srcW * scale));
 	const frameH = Math.max(1, Math.round(srcH * scale));
-	const count = sampledFrames.length;
 
 	const stripCanvas = document.createElement('canvas');
 	stripCanvas.width = frameW;
@@ -639,8 +649,6 @@ export async function serializeFramesToPayload(
 		dataUrl = stripCanvas.toDataURL('image/jpeg', quality);
 	}
 
-	const delays = sampledFrames.map((f) => f.delayMs || 100);
-
 	return {
 		t: 'anim',
 		d: dataUrl,
@@ -656,9 +664,9 @@ export async function serializeFramesToPayload(
  */
 export async function sampleVideoToFrames(
 	video: HTMLVideoElement,
-	maxDurationSec = 2.0,
-	fps = 7,
-	maxDim = 72
+	maxDurationSec = 3.0,
+	fps = 18,
+	maxDim = 64
 ): Promise<DecodedMediaFrame[]> {
 	if (typeof document === 'undefined' || !video) return [];
 
@@ -675,7 +683,7 @@ export async function sampleVideoToFrames(
 	if (!ctx) return [];
 
 	const duration = video.duration && !isNaN(video.duration) ? Math.min(video.duration, maxDurationSec) : maxDurationSec;
-	const frameCount = Math.max(4, Math.min(16, Math.round(duration * fps)));
+	const frameCount = Math.max(8, Math.min(48, Math.round(duration * fps)));
 	const delayMs = Math.round(1000 / fps);
 	const frames: DecodedMediaFrame[] = [];
 
@@ -784,7 +792,7 @@ export async function hydrateAssetsFromPayload(payload?: WireAssetPayload): Prom
 
 			frames.push({
 				bitmap,
-				delayMs: delays[i] || 100
+				delayMs: Math.max(16, delays[i] || 50)
 			});
 		}
 

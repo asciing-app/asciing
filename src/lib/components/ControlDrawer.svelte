@@ -25,6 +25,19 @@
 	let gifTimer: ReturnType<typeof setTimeout> | null = null;
 	let gifCanvas: HTMLCanvasElement | null = null;
 
+	// Sync externally hydrated gifFrames (e.g. from shared link hash)
+	$effect(() => {
+		const incomingFrames = assets['gifFrames'] as DecodedMediaFrame[] | undefined;
+		if (incomingFrames && incomingFrames.length > 0 && incomingFrames !== gifFrames) {
+			gifFrames = incomingFrames;
+			currentFrameIndex = 0;
+			isGifPlaying = true;
+			if (incomingFrames.length > 1) {
+				scheduleGifPlayback();
+			}
+		}
+	});
+
 	$effect(() => {
 		if (typeof window !== 'undefined' && window.innerWidth < 768) {
 			collapsed = true;
@@ -49,7 +62,9 @@
 		if (!isGifPlaying || gifFrames.length <= 1) return;
 
 		const current = gifFrames[currentFrameIndex];
-		const delay = current?.delayMs || 100;
+		const speed = Math.max(0.05, Number(params.speed ?? 1.0));
+		const rawDelay = current?.delayMs || 100;
+		const delay = Math.max(16, Math.round(rawDelay / speed));
 
 		gifTimer = setTimeout(() => {
 			if (!isGifPlaying || gifFrames.length <= 1) return;
@@ -488,6 +503,24 @@
 						bind:value={params[ctrl.key]}
 						class="w-full accent-[#FF605C] bg-white/10 h-1.5 cursor-pointer"
 					/>
+					{#if ctrl.key === 'speed' || ctrl.key === 'speedX' || ctrl.key === 'speedY'}
+						<div class="flex items-center gap-1.5 pt-1">
+							{#each [0.25, 0.5, 1.0, 1.5, 2.0] as presetMultiplier}
+								<button
+									type="button"
+									onclick={() => {
+										params[ctrl.key] = presetMultiplier;
+									}}
+									class="px-1.5 py-0.5 text-[10px] font-mono border-0 cursor-pointer transition-colors {Math.abs(Number(params[ctrl.key] ?? ctrl.default) - presetMultiplier) < 0.05
+										? 'bg-[#FF605C] text-white font-semibold'
+										: 'bg-white/5 hover:bg-white/10 text-white/60 hover:text-white'}"
+									title={`Set speed to ${presetMultiplier}x`}
+								>
+									{presetMultiplier}x
+								</button>
+							{/each}
+						</div>
+					{/if}
 				{:else if ctrl.type === 'color'}
 					<div class="flex items-center gap-2">
 						<input

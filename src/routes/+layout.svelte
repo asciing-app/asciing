@@ -7,7 +7,7 @@
 
 	let { children }: LayoutProps = $props();
 
-	let isViewRoute = $derived(page.url.pathname.startsWith('/view'));
+	let isViewRoute = $derived(page.url.pathname.startsWith('/view') || page.url.pathname.startsWith('/v') || page.url.pathname.startsWith('/s'));
 </script>
 
 <svelte:head>

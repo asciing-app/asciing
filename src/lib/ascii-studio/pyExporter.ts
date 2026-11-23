@@ -290,7 +290,8 @@ if __name__ == '__main__':
 	const rows = grids[0].rows;
 
 	const framesLines = grids.map((g) => extractFrameLines(g.grid, cols, rows));
-	const delaysSec = frames.map((f) => Number((f.delayMs / 1000).toFixed(4)));
+	const speed = Math.max(0.05, Number(settings.speed ?? 1.0));
+	const delaysSec = frames.map((f) => Number((Math.max(10, f.delayMs) / (1000 * speed)).toFixed(4)));
 
 	const framesLiteral = framesLines
 		.map((fLines) => `    ${JSON.stringify(fLines)},`)

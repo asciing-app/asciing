@@ -189,7 +189,7 @@
 		<div class="absolute top-4 right-4 z-30 flex items-center gap-2">
 			<a
 				href={studioLink}
-				class="flex items-center gap-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white border-0 text-xs font-sans font-medium uppercase tracking-wider transition-colors shadow-lg cursor-pointer"
+				class="flex items-center gap-1.5 px-3 py-1.5 bg-black/60 hover:bg-black/80 active:bg-black/90 backdrop-blur-md text-white border-0 text-[11px] sm:text-xs font-sans font-medium uppercase tracking-wider transition-colors shadow-lg cursor-pointer"
 			>
 				<span>EDIT IN STUDIO</span>
 				<span class="text-[#FF605C]">↗</span>
