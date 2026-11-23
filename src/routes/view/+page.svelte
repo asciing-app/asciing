@@ -1,6 +1,6 @@
 <script lang="ts">
 	import CanvasViewport from '#lib/components/CanvasViewport.svelte';
-	import { decodePresetState, getDefaultParams, hydrateAssetsFromPayload } from '#lib/engine/codec.js';
+	import { decodePresetStateAsync, getDefaultParams, hydrateAssetsFromPayload } from '#lib/engine/codec.js';
 	import { getPresetBySlug, PRESETS } from '#lib/presets/registry.js';
 	import type { PresetDefinition, PresetParams, RuntimeAssets } from '#lib/types/preset.js';
 
@@ -111,7 +111,7 @@
 		const hash = window.location.hash;
 		currentHash = hash;
 
-		if (!hash || !hash.includes('v=')) {
+		if (!hash || hash.length <= 1) {
 			// Fallback to first preset with defaults
 			const fallback = PRESETS[0];
 			currentPreset = fallback;
@@ -120,7 +120,8 @@
 			return;
 		}
 
-		const decoded = decodePresetState(hash);
+		const controlsMap = Object.fromEntries(PRESETS.map((p) => [p.slug, p.controls]));
+		const decoded = await decodePresetStateAsync(hash, controlsMap);
 		if (!decoded) {
 			errorNotice = 'Unable to decode visualizer state hash.';
 			currentPreset = PRESETS[0];
