@@ -34,6 +34,7 @@ export function mountWeb(ctx: MountContext): () => void {
 		const params = getParams();
 		const assets = getAssets();
 
+		const speed = Math.max(0.05, Number(params.speed ?? 1.0));
 		const cols = Math.max(20, Math.min(240, Number(params.cols ?? 90)));
 		const fontSize = Math.max(8, Math.min(32, Number(params.fontSize ?? 11)));
 		const charsetKey = String(params.charset ?? 'standard');
@@ -66,7 +67,7 @@ export function mountWeb(ctx: MountContext): () => void {
 
 		if (gifFrames && gifFrames.length > 0) {
 			const totalDuration = gifFrames.reduce((acc, f) => acc + (f.delayMs || 100), 0);
-			const elapsedMs = (time * 1000) % Math.max(10, totalDuration);
+			const elapsedMs = (time * speed * 1000) % Math.max(10, totalDuration);
 			let accumulated = 0;
 			let activeFrame = gifFrames[0];
 			for (const f of gifFrames) {
@@ -78,7 +79,13 @@ export function mountWeb(ctx: MountContext): () => void {
 			}
 			sourceMedia = activeFrame.bitmap as CanvasImageSource;
 		} else if (assets['video']) {
-			sourceMedia = assets['video'] as HTMLVideoElement;
+			const vid = assets['video'] as HTMLVideoElement;
+			if (vid.playbackRate !== speed && !isNaN(speed)) {
+				try {
+					vid.playbackRate = speed;
+				} catch {}
+			}
+			sourceMedia = vid;
 		} else if (assets['image']) {
 			sourceMedia = assets['image'] as HTMLCanvasElement;
 		}
@@ -103,8 +110,8 @@ export function mountWeb(ctx: MountContext): () => void {
 			const BOTTOM_TICKER = '*** ZERO BACKEND *** CLIENT-SIDE PRIVACY *** PYTHON 3 TERMINAL EXPORT *** ANSI 256 / TRUECOLOR *** ';
 
 			const bannerStartRow = Math.max(1, Math.floor((rows - BANNER.length) / 2));
-			const bannerCharShift = Math.floor(time * 14) % BANNER_LEN;
-			const bannerSubPixel = ((time * 14) % 1) * charWidth;
+			const bannerCharShift = Math.floor(time * speed * 14) % BANNER_LEN;
+			const bannerSubPixel = (((time * speed * 14) % 1) + 1) % 1 * charWidth;
 
 			// Marquee Center Banner
 			for (let r = 0; r < BANNER.length; r++) {
@@ -121,7 +128,7 @@ export function mountWeb(ctx: MountContext): () => void {
 					} else if (colorMode === 'mono') {
 						c.fillStyle = '#f4f4f5';
 					} else {
-						const norm = (col / demoCols + time * 0.15) % 1;
+						const norm = (col / demoCols + time * speed * 0.15) % 1;
 						c.fillStyle = norm < 0.35 ? '#ff605c' : norm < 0.7 ? '#c084fc' : '#38bdf8';
 					}
 
@@ -131,8 +138,8 @@ export function mountWeb(ctx: MountContext): () => void {
 
 			// Top Ticker (if height allows)
 			if (bannerStartRow >= 2) {
-				const topShift = Math.floor(time * 10) % TOP_TICKER.length;
-				const topSub = ((time * 10) % 1) * charWidth;
+				const topShift = Math.floor(time * speed * 10) % TOP_TICKER.length;
+				const topSub = (((time * speed * 10) % 1) + 1) % 1 * charWidth;
 				c.fillStyle = '#52525b';
 				for (let col = 0; col < demoCols; col++) {
 					const ch = TOP_TICKER[(col + topShift) % TOP_TICKER.length];
@@ -142,8 +149,8 @@ export function mountWeb(ctx: MountContext): () => void {
 
 			// Bottom Ticker (if height allows)
 			if (bannerStartRow + 6 < rows) {
-				const btmShift = Math.floor(time * 9) % BOTTOM_TICKER.length;
-				const btmSub = ((time * 9) % 1) * charWidth;
+				const btmShift = Math.floor(time * speed * 9) % BOTTOM_TICKER.length;
+				const btmSub = (((time * speed * 9) % 1) + 1) % 1 * charWidth;
 				c.fillStyle = '#52525b';
 				for (let col = 0; col < demoCols; col++) {
 					const ch = BOTTOM_TICKER[(col + btmShift) % BOTTOM_TICKER.length];
