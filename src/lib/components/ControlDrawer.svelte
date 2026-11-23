@@ -89,10 +89,20 @@
 		}
 	}
 
+	let uploadError = $state<string | null>(null);
+
 	async function handleFileSelect(e: Event) {
 		const input = e.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
+
+		uploadError = null;
+		const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB limit
+		if (file.size > MAX_FILE_SIZE) {
+			uploadError = 'File exceeds 5MB limit. Please select a smaller file.';
+			if (fileInputRef) fileInputRef.value = '';
+			return;
+		}
 
 		clearFile();
 		userImageName = file.name;
@@ -555,9 +565,14 @@
 							>
 								<span class="font-sans font-medium uppercase">CHOOSE LOCAL MEDIA</span>
 								<div class="text-[9px] text-white/70 mt-0.5 font-sans">
-									Processed 100% client-side
+									Max 5MB • Processed 100% client-side
 								</div>
 							</label>
+							{#if uploadError}
+								<div class="text-[10px] text-[#FF605C] font-sans px-1">
+									{uploadError}
+								</div>
+							{/if}
 
 							<div class="space-y-1.5 pt-1">
 								<div class="flex items-center gap-1.5">
