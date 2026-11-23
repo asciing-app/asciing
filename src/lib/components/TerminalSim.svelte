@@ -1,5 +1,12 @@
 <script lang="ts">
-	const COMMAND = 'python3 ascii_plasma.py';
+	import { decodePresetState } from '../engine/codec.js';
+	import { getPresetBySlug, PRESETS } from '../presets/registry.js';
+	import type { PresetDefinition, PresetParams } from '../types/preset.js';
+
+	const controlsMap = Object.fromEntries(PRESETS.map((p) => [p.slug, p.controls]));
+
+	const DEFAULT_COMMAND = 'python3 ascii_plasma.py';
+	let commandName = $state(DEFAULT_COMMAND);
 	const CHARS = ' .:-=+*#%@';
 	const CHAR_LEN = CHARS.length;
 	const SCALE = 2.5;
@@ -20,6 +27,24 @@
 
 	let canvasEl: HTMLCanvasElement | null = $state(null);
 	let containerEl: HTMLDivElement | null = $state(null);
+
+	let customPreset = $state<PresetDefinition | null>(null);
+	let customParams = $state<PresetParams>({});
+	let customHash = $state<string>('');
+	let activeChoice = $state<1 | 2 | 3>(1);
+	let activeMountCleanup: (() => void) | null = null;
+
+	let inputCode = $state('');
+
+	let decoded = $derived.by(() => {
+		if (!inputCode.trim()) return null;
+		return decodePresetState(inputCode, controlsMap);
+	});
+
+	let matchedPreset = $derived.by(() => {
+		if (!decoded) return null;
+		return getPresetBySlug(decoded.slug);
+	});
 
 	let charWidth = 6.6;
 	let charHeight = 15;
@@ -62,7 +87,7 @@
 	}
 
 	function drawFrame(time: number) {
-		if (!canvasEl || !containerEl) return;
+		if (!canvasEl || !containerEl || customPreset) return;
 		const ctx = canvasEl.getContext('2d');
 		if (!ctx) return;
 
@@ -111,10 +136,10 @@
 	}
 
 	function startRenderLoop() {
-		if (rafId) return;
+		if (rafId || customPreset) return;
 
 		function render(now: number) {
-			if (!isVisible || simState !== 'running') {
+			if (!isVisible || simState !== 'running' || customPreset) {
 				rafId = 0;
 				return;
 			}
@@ -133,24 +158,18 @@
 		rafId = requestAnimationFrame(render);
 	}
 
-	function typeNextChar(charIdx: number) {
-		if (charIdx < COMMAND.length) {
-			typedCommand = COMMAND.slice(0, charIdx + 1);
-			const jitter = Math.floor(45 + Math.random() * 40);
+	function typeCommand(charIdx: number, slug: string, cmd: string) {
+		if (charIdx < cmd.length) {
+			typedCommand = cmd.slice(0, charIdx + 1);
+			const jitter = Math.floor(35 + Math.random() * 30);
 			timerId = setTimeout(() => {
-				typeNextChar(charIdx + 1);
+				typeCommand(charIdx + 1, slug, cmd);
 			}, jitter);
 		} else {
-			// Finished typing, wait 130ms to simulate Enter
+			// Finished typing, wait 140ms to simulate Enter
 			timerId = setTimeout(() => {
-				simState = 'running';
-				t = 0;
-				lastFrameTime = performance.now();
-				resizeCanvas();
-				if (isVisible) {
-					startRenderLoop();
-				}
-			}, 130);
+				mountPreset(slug, cmd);
+			}, 140);
 		}
 	}
 
@@ -158,40 +177,183 @@
 		clearTimers();
 		simState = 'prompt';
 		typedCommand = '';
+		activeChoice = 1;
 
-		// 400ms pause at prompt before typing
 		timerId = setTimeout(() => {
 			simState = 'typing';
-			typeNextChar(0);
-		}, 400);
+			typeCommand(0, 'ascii-plasma', 'python3 ascii_plasma.py');
+		}, 350);
 	}
 
-	function handleStop() {
+	function selectPreset(choice: 1 | 2 | 3) {
+		activeChoice = choice;
+		const slug = choice === 1 ? 'ascii-plasma' : choice === 2 ? 'typography-spiral' : 'torus-field';
+		const cmd = `python3 ${slug.replace(/-/g, '_')}.py`;
+
 		clearTimers();
 		if (rafId) {
 			cancelAnimationFrame(rafId);
 			rafId = 0;
 		}
-		simState = 'stopped';
+		if (activeMountCleanup) {
+			activeMountCleanup();
+			activeMountCleanup = null;
+		}
+
+		commandName = cmd;
+		typedCommand = '';
+		simState = 'typing';
+		typeCommand(0, slug, cmd);
 	}
 
-	function handleReplay() {
+	function mountPreset(slug: string, cmd: string) {
+		const p = getPresetBySlug(slug);
+		if (!p) return;
+
 		clearTimers();
 		if (rafId) {
 			cancelAnimationFrame(rafId);
 			rafId = 0;
 		}
-		startBootSequence();
+		if (activeMountCleanup) {
+			activeMountCleanup();
+			activeMountCleanup = null;
+		}
+
+		const defaultParams: PresetParams = {};
+		for (const ctrl of p.controls) {
+			if ('default' in ctrl) {
+				defaultParams[ctrl.key] = ctrl.default;
+			}
+		}
+
+		customPreset = p;
+		customParams = defaultParams;
+		customHash = '';
+		commandName = cmd;
+		typedCommand = cmd;
+		simState = 'running';
+
+		if (canvasEl && containerEl) {
+			activeMountCleanup = p.mountWeb({
+				canvas: canvasEl,
+				container: containerEl,
+				getParams: () => customParams,
+				getAssets: () => ({})
+			});
+		}
+	}
+
+	function playCode(codeString: string) {
+		if (!codeString.trim()) return;
+		const d = decodePresetState(codeString.trim());
+		if (!d) return;
+
+		const p = getPresetBySlug(d.slug);
+		if (!p) return;
+
+		let rawHash = codeString.trim();
+		const hashIdx = rawHash.indexOf('#');
+		if (hashIdx !== -1) {
+			rawHash = rawHash.slice(hashIdx);
+		} else if (rawHash.startsWith('2.') || rawHash.startsWith('v=')) {
+			rawHash = `#${rawHash}`;
+		} else {
+			rawHash = `#${rawHash}`;
+		}
+
+		customPreset = p;
+		customParams = d.params;
+		customHash = rawHash;
+		if (d.slug === 'ascii-plasma') activeChoice = 1;
+		else if (d.slug === 'typography-spiral') activeChoice = 2;
+		else if (d.slug === 'torus-field') activeChoice = 3;
+
+		clearTimers();
+		if (rafId) {
+			cancelAnimationFrame(rafId);
+			rafId = 0;
+		}
+		if (activeMountCleanup) {
+			activeMountCleanup();
+			activeMountCleanup = null;
+		}
+
+		const cmd = `python3 ${p.slug.replace(/-/g, '_')}.py`;
+		commandName = cmd;
+		typedCommand = cmd;
+		simState = 'running';
+
+		if (canvasEl && containerEl) {
+			activeMountCleanup = p.mountWeb({
+				canvas: canvasEl,
+				container: containerEl,
+				getParams: () => customParams,
+				getAssets: () => ({})
+			});
+		}
+	}
+
+	function handleView() {
+		if (!inputCode.trim()) return;
+		playCode(inputCode);
+	}
+
+	function handleFullscreen() {
+		if (!decoded) return;
+		let rawHash = inputCode.trim();
+		const hashIdx = rawHash.indexOf('#');
+		if (hashIdx !== -1) {
+			rawHash = rawHash.slice(hashIdx);
+		} else if (rawHash.startsWith('v=')) {
+			rawHash = `#${rawHash}`;
+		} else {
+			rawHash = `#v=${rawHash}`;
+		}
+		window.location.href = `/view${rawHash}`;
+	}
+
+	function handleKeyDown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			e.preventDefault();
+			handleView();
+		}
+	}
+
+	function handlePaste(e: ClipboardEvent) {
+		const pasted = e.clipboardData?.getData('text');
+		if (pasted) {
+			inputCode = pasted;
+			setTimeout(() => {
+				playCode(pasted);
+			}, 10);
+		}
+	}
+
+	function handleWindowKeyDown(e: KeyboardEvent) {
+		const target = e.target as HTMLElement | null;
+		const tag = target?.tagName.toLowerCase();
+		if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
+
+		if (e.key === '1') {
+			selectPreset(1);
+		} else if (e.key === '2') {
+			selectPreset(2);
+		} else if (e.key === '3') {
+			selectPreset(3);
+		}
 	}
 
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
+		window.addEventListener('keydown', handleWindowKeyDown);
+
 		resizeCanvas();
 
 		const resizeObserver = new ResizeObserver(() => {
 			resizeCanvas();
-			if (simState === 'running') {
+			if (simState === 'running' && !customPreset) {
 				drawFrame(t);
 			}
 		});
@@ -206,7 +368,7 @@
 			(entries) => {
 				for (const entry of entries) {
 					isVisible = entry.isIntersecting;
-					if (isVisible && simState === 'running' && !rafId) {
+					if (isVisible && simState === 'running' && !rafId && !customPreset) {
 						lastFrameTime = performance.now();
 						startRenderLoop();
 					} else if (!isVisible && rafId) {
@@ -223,7 +385,7 @@
 		}
 
 		if (prefersReducedMotion) {
-			simState = 'stopped';
+			mountPreset('ascii-plasma', 'python3 ascii_plasma.py');
 		} else {
 			startBootSequence();
 		}
@@ -234,71 +396,99 @@
 				cancelAnimationFrame(rafId);
 				rafId = 0;
 			}
+			if (activeMountCleanup) {
+				activeMountCleanup();
+				activeMountCleanup = null;
+			}
+			window.removeEventListener('keydown', handleWindowKeyDown);
 			resizeObserver.disconnect();
 			intersectionObserver.disconnect();
 		};
 	});
 </script>
 
-<div class="w-full min-w-0 bg-white/[0.015] backdrop-blur-md overflow-hidden select-none">
-	<!-- Title Bar -->
+<div class="w-full min-w-0 bg-white/[0.015] backdrop-blur-md overflow-hidden select-none border-0">
+	<!-- Header Bar: Replaced with slightly transparent borderless text box -->
 	<div
-		class="h-9 px-3 sm:px-3.5 bg-black/40 border-b border-white/[0.04] flex items-center justify-between gap-2"
+		class="relative flex items-center h-10 px-3 bg-white/[0.015] hover:bg-white/[0.03] focus-within:bg-white/[0.03] backdrop-blur-md transition-colors border-0"
 	>
-		<!-- Left: Window dots + status -->
-		<div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
-			<div class="flex items-center gap-1.5 shrink-0" aria-hidden="true">
-				<span class="w-2.5 h-2.5 bg-white/10 border border-white/10"></span>
-				<span class="w-2.5 h-2.5 bg-white/10 border border-white/10"></span>
-				<span class="w-2.5 h-2.5 bg-white/10 border border-white/10"></span>
-			</div>
-			<span class="text-[11px] font-mono text-[#a1a1aa] ml-1 truncate">
-				zsh — {cols}×{rows}
-			</span>
-		</div>
+		<input
+			type="text"
+			placeholder="paste generated code"
+			bind:value={inputCode}
+			onkeydown={handleKeyDown}
+			onpaste={handlePaste}
+			class="w-full bg-transparent border-0 pl-1 pr-44 sm:pr-52 py-2 text-white font-normal text-xs placeholder:font-normal placeholder:text-white/30 placeholder:drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] transition-colors focus:outline-none"
+		/>
 
-		<!-- Right: Action button + Studio link -->
-		<div class="flex items-center gap-2 sm:gap-3 shrink-0">
-			{#if simState === 'running'}
-				<button
-					type="button"
-					onclick={handleStop}
-					class="text-[11px] font-mono text-[#a1a1aa] hover:text-white px-2 py-0.5 border border-white/10 hover:border-white/20 bg-white/[0.02] transition-colors cursor-pointer"
-					title="Interrupt script (^C)"
-				>
-					^C
-				</button>
-			{:else}
-				<button
-					type="button"
-					onclick={handleReplay}
-					class="text-[11px] font-mono text-[#a1a1aa] hover:text-white px-2 py-0.5 border border-white/10 hover:border-white/20 bg-white/[0.02] transition-colors cursor-pointer"
-					title="Replay script"
-				>
-					Replay
-				</button>
-			{/if}
-
-			<a
-				href="/studio/ascii-plasma"
-				class="text-[11px] font-mono text-[#a1a1aa] hover:text-white transition-colors flex items-center gap-1"
+		<!-- Right Side: view button with darker red padding & fullscreen button -->
+		<div class="absolute right-2 flex items-center gap-1.5 sm:gap-2">
+			<button
+				type="button"
+				onclick={handleFullscreen}
+				disabled={!decoded}
+				class="px-2.5 py-1 text-xs font-normal text-white/70 hover:text-white disabled:opacity-0 disabled:pointer-events-none bg-white/[0.06] hover:bg-white/[0.12] transition-all border-0 cursor-pointer"
 			>
-				Studio ↗
-			</a>
+				fullscreen
+			</button>
+			<button
+				type="button"
+				onclick={handleView}
+				disabled={!decoded}
+				class="px-3.5 py-1 text-xs font-normal text-white disabled:opacity-40 disabled:cursor-not-allowed bg-[#7a1616] hover:bg-[#8f1a1a] transition-colors border-0 cursor-pointer"
+			>
+				view
+			</button>
 		</div>
 	</div>
 
-	<!-- Terminal Body -->
+	<!-- Terminal Body: Scales with width and viewport height like cards -->
 	<div
 		bind:this={containerEl}
-		class="relative w-full h-64 sm:h-72 lg:h-80 xl:h-[26rem] bg-transparent overflow-hidden font-mono text-xs sm:text-sm"
+		class="relative w-full h-64 sm:h-72 lg:h-[clamp(280px,42vh,520px)] bg-transparent overflow-hidden font-mono text-xs sm:text-sm"
 	>
-		<!-- Continuous 20 FPS Canvas -->
+		<!-- Continuous Canvas -->
 		<canvas
 			bind:this={canvasEl}
 			class="w-full h-full block"
 			class:hidden={simState !== 'running'}
 		></canvas>
+
+		<!-- Corner controls overlay: 1, 2, 3 -->
+		<div class="absolute top-2.5 right-2.5 z-10 flex flex-col items-end gap-1.5">
+			<button
+				type="button"
+				onclick={() => selectPreset(1)}
+				class="w-7 h-6 flex items-center justify-center text-xs font-sans border-0 transition-colors cursor-pointer backdrop-blur-md {activeChoice === 1
+					? 'bg-[#7a1616] text-white font-semibold'
+					: 'bg-black/40 hover:bg-black/70 text-white/50 hover:text-white font-normal'}"
+				title="1: ASCII Plasma"
+			>
+				1
+			</button>
+
+			<button
+				type="button"
+				onclick={() => selectPreset(2)}
+				class="w-7 h-6 flex items-center justify-center text-xs font-sans border-0 transition-colors cursor-pointer backdrop-blur-md {activeChoice === 2
+					? 'bg-[#7a1616] text-white font-semibold'
+					: 'bg-black/40 hover:bg-black/70 text-white/50 hover:text-white font-normal'}"
+				title="2: Typography Spiral"
+			>
+				2
+			</button>
+
+			<button
+				type="button"
+				onclick={() => selectPreset(3)}
+				class="w-7 h-6 flex items-center justify-center text-xs font-sans border-0 transition-colors cursor-pointer backdrop-blur-md {activeChoice === 3
+					? 'bg-[#7a1616] text-white font-semibold'
+					: 'bg-black/40 hover:bg-black/70 text-white/50 hover:text-white font-normal'}"
+				title="3: 3D Torus Field"
+			>
+				3
+			</button>
+		</div>
 
 		<!-- Prompt / Typing text overlay -->
 		{#if simState === 'prompt' || simState === 'typing'}
@@ -310,19 +500,18 @@
 					></span>
 				</div>
 			</div>
-		{:else if simState === 'stopped'}
-			<div class="p-3.5 sm:p-4 text-xs sm:text-sm font-mono leading-relaxed text-[#a1a1aa] select-text space-y-1">
-				<div>
-					<span class="text-[#71717a]">~/asciing $ </span>
-					<span class="text-[#fafafa]">{COMMAND}</span>
-				</div>
-				<div class="text-[#71717a]">^C</div>
-				<div>
-					<span class="text-[#71717a]">~/asciing $ </span>
-					<span class="inline-block w-2 h-3.5 bg-[#fafafa] align-middle animate-pulse ml-0.5"
-					></span>
-				</div>
-			</div>
 		{/if}
 	</div>
+
+	<!-- Status notice if preset recognized or invalid code -->
+	{#if matchedPreset}
+		<div class="flex items-center gap-1.5 text-[11px] text-white/90 px-3 py-1.5 bg-black/30 border-t border-white/[0.03]">
+			<span class="text-[#FF605C]">✔</span>
+			<span>Loaded: <strong>{matchedPreset.title}</strong></span>
+		</div>
+	{:else if inputCode.trim() && !decoded}
+		<div class="text-[11px] text-[#FF605C] px-3 py-1.5 bg-black/30 border-t border-white/[0.03]">
+			Invalid or corrupted share code / URL
+		</div>
+	{/if}
 </div>

@@ -84,7 +84,7 @@
 	bind:this={containerEl}
 	role="region"
 	aria-label="Interactive Canvas Viewport"
-	class="relative w-full h-full flex items-center justify-center overflow-hidden bg-[#000000] select-none"
+	class="relative w-full h-full flex items-center justify-center overflow-hidden bg-transparent select-none"
 	onmousemove={handleMouseMove}
 >
 	<canvas bind:this={canvasEl} class="block w-full h-full"></canvas>
@@ -100,9 +100,8 @@
 				onclick={toggleFullscreen}
 				aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
 				title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-				class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono bg-[#000000] hover:bg-[#121212] hover:border-[#FF605C] text-white border border-[#27272a] transition-colors"
+				class="flex items-center gap-2 px-3 py-1.5 text-xs font-sans font-medium uppercase tracking-wider bg-black/60 hover:bg-black/80 backdrop-blur-md text-white border-0 transition-colors shadow-lg cursor-pointer"
 			>
-				<span class="inline-block w-2.5 h-2.5 border border-[#FF605C]"></span>
 				<span>{isFullscreen ? 'WINDOWED' : 'FULLSCREEN'}</span>
 			</button>
 		</div>

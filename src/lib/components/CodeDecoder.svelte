@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { decodePresetState } from '../engine/codec.js';
-	import { getPresetBySlug } from '../presets/registry.js';
+	import { getPresetBySlug, PRESETS } from '../presets/registry.js';
 
 	let inputCode = $state('');
 	let errorMessage = $state<string | null>(null);
 
+	const controlsMap = Object.fromEntries(PRESETS.map((p) => [p.slug, p.controls]));
+
 	let decoded = $derived.by(() => {
 		if (!inputCode.trim()) return null;
-		return decodePresetState(inputCode);
+		return decodePresetState(inputCode, controlsMap);
 	});
 
 	let matchedPreset = $derived.by(() => {
@@ -31,10 +33,10 @@
 		const hashIdx = rawHash.indexOf('#');
 		if (hashIdx !== -1) {
 			rawHash = rawHash.slice(hashIdx);
-		} else if (rawHash.startsWith('v=')) {
+		} else if (rawHash.startsWith('2.') || rawHash.startsWith('v=')) {
 			rawHash = `#${rawHash}`;
 		} else {
-			rawHash = `#v=${rawHash}`;
+			rawHash = `#${rawHash}`;
 		}
 
 		if (mode === 'studio') {
@@ -51,22 +53,21 @@
 	}
 </script>
 
-<div class="w-full space-y-2 font-sans text-xs">
+<div class="w-full space-y-1.5 font-sans text-xs">
 	<div class="relative flex items-center">
-		<span class="absolute left-3 text-white font-sans text-xs select-none">#v=</span>
 		<input
 			type="text"
-			placeholder="Paste share code or /view#v= URL to load creation..."
+			placeholder="paste generated code"
 			bind:value={inputCode}
 			onkeydown={handleKeyDown}
-			class="w-full bg-[#000000] border border-[#27272a] focus:border-[#FF605C] pl-9 sm:pl-10 pr-28 sm:pr-36 py-2.5 sm:py-3 text-white placeholder:text-white/40 font-sans text-xs transition-colors focus:outline-none"
+			class="w-full bg-white/[0.02] hover:bg-white/[0.04] focus:bg-white/[0.04] backdrop-blur-md border border-white/[0.06] focus:border-[#FF605C]/60 pl-3 pr-28 sm:pr-32 py-2 text-white placeholder:text-white/30 placeholder:drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] font-sans text-xs transition-colors focus:outline-none"
 		/>
 		<div class="absolute right-1 sm:right-1.5 flex items-center gap-1 sm:gap-1.5">
 			<button
 				type="button"
 				onclick={() => handleOpen('studio')}
 				disabled={!inputCode.trim()}
-				class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-transparent border border-[#27272a] hover:border-[#FF605C] hover:text-[#FF605C] disabled:opacity-30 text-white font-sans text-[10px] sm:text-[11px] font-medium transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
+				class="px-2.5 py-1 bg-white/[0.08] hover:bg-white/[0.14] hover:text-[#FF605C] border-0 disabled:opacity-0 disabled:pointer-events-none text-white font-sans text-[10px] sm:text-[11px] font-medium transition-all cursor-pointer uppercase tracking-wider"
 			>
 				STUDIO
 			</button>
@@ -74,7 +75,7 @@
 				type="button"
 				onclick={() => handleOpen('view')}
 				disabled={!inputCode.trim()}
-				class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-[#FF605C] hover:bg-[#e04f4b] disabled:opacity-30 text-white font-sans text-[10px] sm:text-[11px] font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed uppercase"
+				class="px-2.5 py-1 bg-[#FF605C] hover:bg-[#e04f4b] border-0 disabled:opacity-0 disabled:pointer-events-none text-white font-sans text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer uppercase tracking-wider"
 			>
 				VIEW
 			</button>
@@ -82,7 +83,7 @@
 	</div>
 
 	{#if matchedPreset}
-		<div class="flex items-center gap-2 text-[11px] text-white px-1">
+		<div class="flex items-center gap-1.5 text-[11px] text-white/90 px-1">
 			<span class="text-[#FF605C]">✔</span>
 			<span>Recognized preset: <strong>{matchedPreset.title}</strong></span>
 		</div>

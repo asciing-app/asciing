@@ -63,6 +63,8 @@ export class GlyphAtlas {
 		const atlasW = cols * ATLAS_CELL_SIZE;
 		const atlasH = rows * ATLAS_CELL_SIZE;
 
+		if (typeof document === 'undefined') return null;
+
 		if (!this.offscreenCanvas) {
 			this.offscreenCanvas = document.createElement('canvas');
 		}
