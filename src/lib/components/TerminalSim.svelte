@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { decodePresetState } from '../engine/codec.js';
-	import { getPresetBySlug } from '../presets/registry.js';
+	import { getPresetBySlug, PRESETS } from '../presets/registry.js';
 	import type { PresetDefinition, PresetParams } from '../types/preset.js';
+
+	const controlsMap = Object.fromEntries(PRESETS.map((p) => [p.slug, p.controls]));
 
 	const DEFAULT_COMMAND = 'python3 ascii_plasma.py';
 	let commandName = $state(DEFAULT_COMMAND);
@@ -36,7 +38,7 @@
 
 	let decoded = $derived.by(() => {
 		if (!inputCode.trim()) return null;
-		return decodePresetState(inputCode);
+		return decodePresetState(inputCode, controlsMap);
 	});
 
 	let matchedPreset = $derived.by(() => {
@@ -254,10 +256,10 @@
 		const hashIdx = rawHash.indexOf('#');
 		if (hashIdx !== -1) {
 			rawHash = rawHash.slice(hashIdx);
-		} else if (rawHash.startsWith('v=')) {
+		} else if (rawHash.startsWith('2.') || rawHash.startsWith('v=')) {
 			rawHash = `#${rawHash}`;
 		} else {
-			rawHash = `#v=${rawHash}`;
+			rawHash = `#${rawHash}`;
 		}
 
 		customPreset = p;
