@@ -83,7 +83,7 @@
 					const fullTarget = typeof window !== 'undefined'
 						? `${window.location.origin}/v#${hash}`
 						: `https://asciing.app/v#${hash}`;
-					const short = await createShortLink(fullTarget);
+					const short = await createShortLink(fullTarget, hash);
 					if (!cancelled && short) {
 						shortUrl = short;
 					}
