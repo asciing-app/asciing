@@ -27,8 +27,8 @@ export function mountWeb(ctx: MountContext): () => void {
 		const charW = fontSize * 0.6;
 		const charH = fontSize;
 
-		const cols = Math.floor(width / charW);
-		const rows = Math.floor(height / charH);
+		const cols = Math.ceil(width / charW);
+		const rows = Math.ceil(height / charH);
 
 		if (cols <= 0 || rows <= 0) return;
 
