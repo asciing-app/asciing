@@ -11,12 +11,17 @@ export class LuminanceSampler {
 	}
 
 	/**
-	 * Creates a calm, sculptural fallback luminance field (soft radial orb / dome lighting)
+	 * Creates a calm, sculptural fallback luminance field (clean directional 3D sphere shading)
 	 * when no local image is uploaded.
 	 */
 	private generateProceduralFallback(): void {
 		const size = LUMINANCE_GRID_SIZE;
 		const half = size / 2;
+
+		// Key light vector (-0.4, -0.6, 0.7) normalized
+		const lx = -0.4082;
+		const ly = -0.6124;
+		const lz = 0.6804;
 
 		for (let y = 0; y < size; y++) {
 			for (let x = 0; x < size; x++) {
@@ -24,25 +29,26 @@ export class LuminanceSampler {
 				const ny = (y - half) / half;
 				const distSq = nx * nx + ny * ny;
 
+				// Strict outer-radius cutoff: outside the sphere radius is strictly 0.0
 				if (distSq >= 1.0) {
 					this.luminanceBuffer[y * size + x] = 0.0;
 					continue;
 				}
 
-				// Soft sculptural spherical dome with top-left directional key light
+				// 3D sphere surface normal
 				const z = Math.sqrt(Math.max(0, 1.0 - distSq));
-				// Light vector (-0.4, -0.6, 0.7) normalized
-				const lx = -0.408;
-				const ly = -0.612;
-				const lz = 0.678;
-				const dot = Math.max(0, nx * lx + ny * ly + z * lz);
 
-				// Diffuse + subtle ambient + soft edge rim
+				// 1. Clean directional diffuse shading (N dot L)
+				// Zero rim light, zero ambient floor, zero backlight on the shadow side
+				const dot = nx * lx + ny * ly + z * lz;
+
+				if (dot <= 0.0) {
+					this.luminanceBuffer[y * size + x] = 0.0;
+					continue;
+				}
+
 				const diffuse = Math.pow(dot, 1.2);
-				const rim = Math.pow(1.0 - z, 2.5) * 0.25;
-				const val = Math.min(1.0, 0.08 + diffuse * 0.85 + rim);
-
-				this.luminanceBuffer[y * size + x] = val;
+				this.luminanceBuffer[y * size + x] = Math.min(1.0, diffuse);
 			}
 		}
 	}
@@ -153,8 +159,15 @@ export class LuminanceSampler {
 	 * Bilinear O(1) luminance sampling at normalized (0..1) coordinates.
 	 */
 	public sampleLuminance(normX: number, normY: number, contrast = 1.0, invert = false): number {
-		if (normX < 0.0 || normX > 1.0 || normY < 0.0 || normY > 1.0) {
-			return invert ? 1.0 : 0.0;
+		// 2. Strict outer-radius cutoff:
+		// If a spiral point's normalized distance from center >= 1.0 (outside sphere radius),
+		// return 0 immediately - never a fallback ambient value or wrapped pixel.
+		const dx = (normX - 0.5) * 2.0;
+		const dy = (normY - 0.5) * 2.0;
+		const distSq = dx * dx + dy * dy;
+
+		if (distSq >= 1.0 || normX < 0.0 || normX > 1.0 || normY < 0.0 || normY > 1.0) {
+			return 0.0;
 		}
 
 		const size = LUMINANCE_GRID_SIZE;
@@ -176,12 +189,26 @@ export class LuminanceSampler {
 
 		let lum = (1.0 - fx) * (1.0 - fy) * v00 + fx * (1.0 - fy) * v10 + (1.0 - fx) * fy * v01 + fx * fy * v11;
 
+		if (lum <= 0.0) {
+			return 0.0;
+		}
+
+		// 4. Contrast curve responsiveness: cleanly push shadows toward 0 across normal range
 		if (contrast !== 1.0) {
 			lum = (lum - 0.5) * contrast + 0.5;
 		}
 
 		lum = Math.max(0.0, Math.min(1.0, lum));
 
-		return invert ? 1.0 - lum : lum;
+		if (invert) {
+			lum = 1.0 - lum;
+		}
+
+		// 3. Hard visibility cull threshold after contrast (< 0.04)
+		if (lum < 0.04) {
+			return 0.0;
+		}
+
+		return lum;
 	}
 }
