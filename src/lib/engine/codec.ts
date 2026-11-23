@@ -21,7 +21,8 @@ export const PRESET_SLUG_MAP: string[] = [
 	'ascii-plasma',
 	'typography-spiral',
 	'torus-field',
-	'make-your-own'
+	'make-your-own',
+	'blooming-bouquet'
 ];
 
 export function getDefaultParams(controls: ControlSchema[]): PresetParams {
