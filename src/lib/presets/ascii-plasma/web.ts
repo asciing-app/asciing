@@ -34,8 +34,8 @@ export function mountWeb(ctx: MountContext): () => void {
 		const charWidth = fontSize * 0.6;
 		const charHeight = fontSize;
 
-		const cols = Math.floor(width / charWidth);
-		const rows = Math.floor(height / charHeight);
+		const cols = Math.ceil(width / charWidth);
+		const rows = Math.ceil(height / charHeight);
 
 		const t = time * speed;
 		const aspect = cols / Math.max(1, rows);
