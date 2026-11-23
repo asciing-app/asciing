@@ -56,8 +56,8 @@ export function mountWeb(ctx: MountContext): () => void {
 		c.textBaseline = 'top';
 		c.textAlign = 'left';
 
-		const charWidth = fontSize * 0.6;
-		const charHeight = fontSize;
+		let charWidth = fontSize * 0.6;
+		let charHeight = fontSize;
 
 		const gifFrames = (assets['gifFrames'] || assets['videoFrames']) as
 			| { bitmap: ImageBitmap | HTMLCanvasElement; delayMs: number }[]
@@ -239,6 +239,19 @@ export function mountWeb(ctx: MountContext): () => void {
 				}
 			}
 		}
+
+		// Auto-fit font scaling for responsive / mobile viewports so grid is never clipped
+		const unscaledGridW = cols * (fontSize * 0.6);
+		const unscaledGridH = rows * fontSize;
+		const maxAvailableW = Math.max(20, width - 16);
+		const maxAvailableH = Math.max(20, height - 16);
+		const autoFitScale = Math.min(1.0, Math.min(maxAvailableW / Math.max(1, unscaledGridW), maxAvailableH / Math.max(1, unscaledGridH)));
+
+		const effectiveFontSize = Math.max(4, fontSize * autoFitScale);
+		charWidth = effectiveFontSize * 0.6;
+		charHeight = effectiveFontSize;
+
+		c.font = `${effectiveFontSize}px "JetBrains Mono", "Geist Mono", monospace`;
 
 		// Render ASCII grid centered in canvas viewport
 		const totalGridW = cols * charWidth;

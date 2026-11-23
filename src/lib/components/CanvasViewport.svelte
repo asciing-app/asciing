@@ -28,7 +28,7 @@
 		}
 	}
 
-	function handleMouseMove() {
+	function handleInteraction() {
 		showHUDTemporarily();
 	}
 
@@ -84,8 +84,9 @@
 	bind:this={containerEl}
 	role="region"
 	aria-label="Interactive Canvas Viewport"
-	class="relative w-full h-full flex items-center justify-center overflow-hidden bg-transparent select-none"
-	onmousemove={handleMouseMove}
+	class="relative w-full h-full flex items-center justify-center overflow-hidden bg-transparent select-none touch-none"
+	onmousemove={handleInteraction}
+	ontouchstart={handleInteraction}
 >
 	<canvas bind:this={canvasEl} class="block w-full h-full"></canvas>
 
