@@ -22,13 +22,13 @@ import shutil
 os.system("")
 
 def setup_terminal():
-    # Hide cursor and clear screen
-    sys.stdout.write("\\033[?25l\\033[2J\\033[H")
+    # Enter alternate screen buffer, hide cursor, and clear screen
+    sys.stdout.write("\\033[?1049h\\033[?25l\\033[2J\\033[H")
     sys.stdout.flush()
 
 def restore_terminal():
-    # Show cursor and reset colors
-    sys.stdout.write("\\033[?25h\\033[0m\\n")
+    # Show cursor, reset colors, and exit alternate screen buffer
+    sys.stdout.write("\\033[0m\\033[?25h\\033[?1049l\\n")
     sys.stdout.flush()
 
 ${renderFramePythonFunction}
@@ -36,7 +36,6 @@ ${renderFramePythonFunction}
 def main():
     setup_terminal()
     start_time = time.time()
-    last_frame = start_time
     frame_interval = ${interval}
 
     try:
@@ -44,12 +43,14 @@ def main():
             now = time.time()
             elapsed = now - start_time
             cols, rows = shutil.get_terminal_size(fallback=(80, 24))
+            # Reserve 1 row to prevent terminal auto-scroll jitter
+            render_rows = max(1, rows - 1)
 
             # Home cursor (flicker-free frame redraw)
             sys.stdout.write("\\033[H")
             
             # Call preset render function
-            frame_str = render_frame(cols, rows, elapsed)
+            frame_str = render_frame(cols, render_rows, elapsed)
             sys.stdout.write(frame_str)
             sys.stdout.flush()
 
