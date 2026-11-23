@@ -3,7 +3,7 @@
 	import CanvasViewport from '#lib/components/CanvasViewport.svelte';
 	import ControlDrawer from '#lib/components/ControlDrawer.svelte';
 	import ShareModal from '#lib/components/ShareModal.svelte';
-	import { decodePresetState, getDefaultParams, hydrateAssetsFromPayload } from '#lib/engine/codec.js';
+	import { decodePresetStateAsync, getDefaultParams, hydrateAssetsFromPayload } from '#lib/engine/codec.js';
 	import type { PresetParams, RuntimeAssets } from '#lib/types/preset.js';
 
 	let { data }: PageProps = $props();
@@ -22,8 +22,8 @@
 		}
 
 		const hash = window.location.hash;
-		if (hash && hash.includes('v=')) {
-			const decoded = decodePresetState(hash);
+		if (hash && hash.length > 1) {
+			const decoded = await decodePresetStateAsync(hash, { [preset.slug]: preset.controls });
 			if (decoded && decoded.slug === preset.slug) {
 				params = { ...defaults, ...decoded.params };
 				if (decoded.assetPayload) {
