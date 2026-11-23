@@ -216,9 +216,10 @@ export function decodePresetMicroHash(code: string, allControls?: Record<string,
  * Creates a guaranteed sub-10 character short link via anonymous public shortener API.
  */
 export async function createShortLink(targetUrl: string): Promise<string | null> {
-	// is.gd requires a valid public domain, map localhost to production domain
+	// is.gd/v.gd require a valid public domain, map localhost to production domain
 	const publicUrl = targetUrl.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, 'https://asciing.app');
 
+	// 1. Try is.gd
 	try {
 		const isGdRes = await fetch(`https://is.gd/create.php?format=json&url=${encodeURIComponent(publicUrl)}`);
 		if (isGdRes.ok) {
@@ -228,7 +229,20 @@ export async function createShortLink(targetUrl: string): Promise<string | null>
 			}
 		}
 	} catch {
-		// Network or API failure
+		// Fall through
+	}
+
+	// 2. Try v.gd
+	try {
+		const vGdRes = await fetch(`https://v.gd/create.php?format=json&url=${encodeURIComponent(publicUrl)}`);
+		if (vGdRes.ok) {
+			const data = (await vGdRes.json()) as { shorturl?: string };
+			if (data.shorturl) {
+				return data.shorturl;
+			}
+		}
+	} catch {
+		// Fall through
 	}
 
 	return null;
@@ -519,8 +533,8 @@ export function decodePresetState(rawInput: string, allControls?: Record<string,
  */
 export async function serializeCanvasToPayload(
 	canvas: HTMLCanvasElement | ImageBitmap,
-	maxDim = 120,
-	quality = 0.55
+	maxDim = 84,
+	quality = 0.40
 ): Promise<WireAssetPayload | null> {
 	if (typeof document === 'undefined') return null;
 
@@ -558,9 +572,9 @@ export async function serializeCanvasToPayload(
  */
 export async function serializeFramesToPayload(
 	frames: DecodedMediaFrame[],
-	maxFrames = 16,
-	maxDim = 72,
-	quality = 0.45
+	maxFrames = 10,
+	maxDim = 52,
+	quality = 0.35
 ): Promise<WireAssetPayload | null> {
 	if (typeof document === 'undefined' || !frames || frames.length === 0) return null;
 
