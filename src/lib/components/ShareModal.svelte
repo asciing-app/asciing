@@ -1,6 +1,8 @@
 <script lang="ts">
 	import {
-		encodePresetState,
+		encodePresetMicroHash,
+		encodePresetStateV2,
+		createShortLink,
 		serializeCanvasToPayload,
 		serializeFramesToPayload,
 		sampleVideoToFrames
@@ -19,21 +21,24 @@
 	let { preset, params, assets = {}, open, onclose }: Props = $props();
 
 	let copiedUrl = $state(false);
+	let copiedShort = $state(false);
 	let copiedCode = $state(false);
 	let isSerializing = $state(false);
+	let isShortening = $state(false);
 	let assetPayload = $state<WireAssetPayload | undefined>(undefined);
 	let encodedHash = $state('');
+	let shortUrl = $state<string | null>(null);
 
 	$effect(() => {
 		if (!open) return;
 		let cancelled = false;
 		isSerializing = true;
+		shortUrl = null;
 
 		(async () => {
 			let payload: WireAssetPayload | undefined = undefined;
 			try {
 				// If media is already referenced via online mediaUrl, skip byte payload serialization
-				// The mediaUrl is already in params and keeps the share link ultra-short (<150 chars).
 				const hasOnlineMediaUrl = typeof params.mediaUrl === 'string' && params.mediaUrl.trim().length > 0;
 
 				if (!hasOnlineMediaUrl) {
@@ -58,8 +63,32 @@
 
 			if (!cancelled) {
 				assetPayload = payload;
-				encodedHash = encodePresetState(preset.slug, preset.version, params, payload);
+
+				// Try V3 Micro-Hash first if there is no binary asset payload
+				let hash: string | null = null;
+				if (!payload) {
+					hash = encodePresetMicroHash(preset.slug, params, preset.controls);
+				}
+
+				if (!hash) {
+					hash = await encodePresetStateV2(preset.slug, preset.version, params, payload, preset.controls);
+				}
+
+				encodedHash = hash;
 				isSerializing = false;
+
+				// If hash is longer than 20 characters (like custom media uploads), auto-generate sub-10 character short link
+				if (hash.length > 20) {
+					isShortening = true;
+					const fullTarget = typeof window !== 'undefined'
+						? `${window.location.origin}/v#${hash}`
+						: `https://asciing.app/v#${hash}`;
+					const short = await createShortLink(fullTarget);
+					if (!cancelled && short) {
+						shortUrl = short;
+					}
+					isShortening = false;
+				}
 			}
 		})();
 
@@ -68,44 +97,15 @@
 		};
 	});
 
-	let shareUrl = $derived.by(() => {
+	let displayShareUrl = $derived.by(() => {
+		if (shortUrl) return shortUrl;
 		if (typeof window !== 'undefined') {
-			return `${window.location.origin}/view#v=${encodedHash}`;
+			return `${window.location.origin}/v#${encodedHash}`;
 		}
-		return `/view#v=${encodedHash}`;
+		return `/v#${encodedHash}`;
 	});
 
-	let shareCode = $derived(`#v=${encodedHash}`);
-
-	let sizeCategory = $derived.by(() => {
-		if (params.mediaUrl) {
-			return {
-				text: 'Direct Media Link (Ultra-compact, streams source)',
-				color: 'text-emerald-400',
-				bg: 'bg-emerald-500/10 border-emerald-500/20'
-			};
-		}
-		const len = shareUrl.length;
-		if (len < 3500) {
-			return {
-				text: 'Compact Link (Fits Discord, WhatsApp & SMS)',
-				color: 'text-emerald-400',
-				bg: 'bg-emerald-500/10 border-emerald-500/20'
-			};
-		}
-		if (len < 25000) {
-			return {
-				text: 'Animation Link (Works directly in browser)',
-				color: 'text-sky-400',
-				bg: 'bg-sky-500/10 border-sky-500/20'
-			};
-		}
-		return {
-			text: 'Large Hash (Use Copy Code or Standalone .html)',
-			color: 'text-amber-400',
-			bg: 'bg-amber-500/10 border-amber-500/20'
-		};
-	});
+	let shareCode = $derived(`#${encodedHash}`);
 
 	async function copyToClipboard(text: string, type: 'url' | 'code') {
 		try {
@@ -137,6 +137,7 @@
 	}
 
 	function downloadStandaloneHtml() {
+		const targetUrl = typeof window !== 'undefined' ? `${window.location.origin}/v#${encodedHash}` : `https://asciing.app/v#${encodedHash}`;
 		const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -151,9 +152,9 @@
 	</style>
 </head>
 <body>
-	<div id="hud">${preset.title} • asciing.app offline export</div>
+	<div id="hud">${preset.title} • asciing offline export</div>
 	<script>
-		window.location.href = "https://asciing.app/view#v=${encodedHash}";
+		window.location.href = "${targetUrl}";
 	<\/script>
 </body>
 </html>`;
@@ -205,18 +206,7 @@
 				</button>
 			</div>
 
-			<!-- Media status indicator pill -->
-			<div class="flex items-center justify-between px-3 py-1.5 border text-xs font-mono {sizeCategory.bg}">
-				<span class="{sizeCategory.color} flex items-center gap-1.5">
-					<span class="inline-block w-1.5 h-1.5 rounded-full bg-current"></span>
-					<span>{sizeCategory.text}</span>
-				</span>
-				<span class="text-white/60 tabular-nums">
-					{isSerializing ? 'packing...' : `${(shareUrl.length / 1024).toFixed(1)} KB`}
-				</span>
-			</div>
-
-			<!-- Live View URL -->
+			<!-- Shareable URL (Sub-10 Char Shortlink / Micro-hash) -->
 			<div class="space-y-2">
 				<label for="share-url-input" class="text-xs uppercase tracking-wider text-white/90 font-sans font-medium">Shareable URL</label>
 				<div class="flex items-center gap-2">
@@ -224,13 +214,13 @@
 						id="share-url-input"
 						type="text"
 						readonly
-						value={isSerializing ? 'Encoding media state...' : shareUrl}
+						value={isSerializing || isShortening ? 'Generating short URL...' : displayShareUrl}
 						class="w-full bg-white/[0.04] border border-white/[0.08] px-3 py-2 text-xs text-white font-mono selection:bg-[#FF605C] selection:text-white focus:outline-none focus:border-[#FF605C]"
 					/>
 					<button
 						type="button"
-						disabled={isSerializing}
-						onclick={() => copyToClipboard(shareUrl, 'url')}
+						disabled={isSerializing || isShortening}
+						onclick={() => copyToClipboard(displayShareUrl, 'url')}
 						class="shrink-0 px-3.5 py-2 text-xs font-sans font-semibold uppercase tracking-wider bg-[#FF605C] hover:bg-[#e04f4b] disabled:opacity-50 text-white border-0 transition-colors cursor-pointer"
 					>
 						{copiedUrl ? 'COPIED!' : 'COPY URL'}
