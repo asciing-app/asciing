@@ -211,9 +211,13 @@ export function mountWeb(ctx: MountContext): () => void {
 		// Sort flowers by Z-depth (Painter's algorithm: lowest z / farthest back drawn first)
 		const sortedFlowers = [...bouquetState.flowers].sort((a, b) => (a.currentZ ?? 0) - (b.currentZ ?? 0));
 
+		// Viewport mobile scale factor
+		const isMobile = width < 600 || height < 600;
+		const wrapScale = isMobile ? Math.max(0.68, Math.min(1.0, Math.min(width / 600, height / 650))) : 1.0;
+
 		// 1. Draw Rear Kraft Wrapping Paper cavity (behind stems)
 		if (showWrapping) {
-			drawBouquetWrappingPaper(offscreenCtx, rootScreenX, rootScreenY, currentAngleY, cameraPitch, 'back');
+			drawBouquetWrappingPaper(offscreenCtx, rootScreenX, rootScreenY, currentAngleY, cameraPitch, 'back', wrapScale);
 		}
 
 		// Draw Foliage Leaves
@@ -289,7 +293,7 @@ export function mountWeb(ctx: MountContext): () => void {
 
 		// 2. Draw Front Kraft Wrapping Paper & Rotating Satin Ribbon Bow (wrapping over lower stems)
 		if (showWrapping) {
-			drawBouquetWrappingPaper(offscreenCtx, rootScreenX, rootScreenY, currentAngleY, cameraPitch, 'front');
+			drawBouquetWrappingPaper(offscreenCtx, rootScreenX, rootScreenY, currentAngleY, cameraPitch, 'front', wrapScale);
 		}
 
 		// 3. Draw Blooming Flowers in 3D depth-sorted order with gentle perspective foreshortening
