@@ -132,9 +132,9 @@ export const bloomingBouquetPreset: PresetDefinition = {
 			label: 'Animated Butterflies',
 			type: 'slider',
 			min: 0,
-			max: 4,
+			max: 15,
 			step: 1,
-			default: 2
+			default: 10
 		},
 		{
 			key: 'overlayText',
