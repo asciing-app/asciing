@@ -50,11 +50,12 @@ def render_frame(cols, rows, t):
 
         cos_p = math.cos(pitch)
         sin_p = math.sin(pitch)
-        yr = y3d * cos_p - z3d * sin_p
-        zr = y3d * sin_p + z3d * cos_p
+        # Screen space rotation (+Y is down)
+        yr = y3d * cos_p + z3d * sin_p
+        zr = -y3d * sin_p + z3d * cos_p
 
         cam_d = 80.0
-        sc = cam_d / max(20.0, zr + cam_d)
+        sc = cam_d / max(20.0, cam_d - zr)
 
         screen_x = int(root_x + x3d * sc)
         screen_y = int(root_y + yr * sc)
@@ -105,14 +106,14 @@ def render_frame(cols, rows, t):
                             z_buffer[fy][fx] = fl['z'] + 1.0
                             char_idx = int((1.0 - dist / max(1, r)) * (RAMP_LEN - 1))
                             grid[fy][fx] = RAMP[max(0, min(RAMP_LEN - 1, char_idx))]
-                                if i % 4 == 0:
-                                    color_grid[fy][fx] = (255, 60, 80)
-                                elif i % 4 == 1:
-                                    color_grid[fy][fx] = (255, 120, 170)
-                                elif i % 4 == 2:
-                                    color_grid[fy][fx] = (255, 200, 40)
-                                else:
-                                    color_grid[fy][fx] = (245, 245, 245)
+                            if i % 4 == 0:
+                                color_grid[fy][fx] = (255, 60, 80)
+                            elif i % 4 == 1:
+                                color_grid[fy][fx] = (255, 120, 170)
+                            elif i % 4 == 2:
+                                color_grid[fy][fx] = (255, 200, 40)
+                            else:
+                                color_grid[fy][fx] = (245, 245, 245)
 
     if OVERLAY_TEXT and rows > 6:
         start_c = max(0, (cols - len(OVERLAY_TEXT)) // 2)
