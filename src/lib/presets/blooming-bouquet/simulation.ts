@@ -3,6 +3,7 @@ import type {
 	FlowerColorName,
 	FlowerConfigItem,
 	FlowerInstance,
+	FoliageLeaf,
 	SparkleParticle,
 	Butterfly,
 	BouquetState
@@ -109,46 +110,27 @@ export function buildFlowerItemsFromCounts(
 }
 
 /**
- * Procedural layout slot generator for varied stem lengths and multi-tiered flower positioning
+ * 3D vector rotation around Y-axis (turntable) followed by X-axis (camera pitch elevation)
  */
-interface StemSlot {
-	normX: number;     // -1 (left) to 1 (right)
-	tierY: number;     // 0 (front low short stem), 1 (mid tier), 2 (tall back stem)
-	spreadOffset: number;
-	tilt: number;
-	depth: number;     // Depth for sorting (2 = background drawn first, 0 = foreground drawn on top)
-}
+export function rotatePoint3D(
+	p: [number, number, number],
+	angleY: number,
+	pitchX: number
+): [number, number, number] {
+	const cosY = Math.cos(angleY);
+	const sinY = Math.sin(angleY);
+	// Rotate around Y
+	const x1 = p[0] * cosY + p[2] * sinY;
+	const y1 = p[1];
+	const z1 = -p[0] * sinY + p[2] * cosY;
 
-function getTieredStemSlots(count: number): StemSlot[] {
-	// Predefined organic bouquet arrangement slots to ensure full, gapless volume
-	const slots: StemSlot[] = [
-		// 1. Center crown (tall rear stem)
-		{ normX: 0.0, tierY: 2, spreadOffset: 0, tilt: 0, depth: 2 },
-		// 2. Lower center (short front stem right above foliage)
-		{ normX: -0.05, tierY: 0, spreadOffset: 0.2, tilt: -0.05, depth: 0 },
-		// 3. Mid left (medium stem)
-		{ normX: -0.45, tierY: 1, spreadOffset: 0.6, tilt: -0.22, depth: 1 },
-		// 4. Mid right (medium stem)
-		{ normX: 0.45, tierY: 1, spreadOffset: 0.6, tilt: 0.22, depth: 1 },
-		// 5. High upper left (tall stem)
-		{ normX: -0.32, tierY: 2, spreadOffset: 0.45, tilt: -0.15, depth: 2 },
-		// 6. High upper right (tall stem)
-		{ normX: 0.32, tierY: 2, spreadOffset: 0.45, tilt: 0.15, depth: 2 },
-		// 7. Low left flank (short stem)
-		{ normX: -0.72, tierY: 0, spreadOffset: 0.85, tilt: -0.38, depth: 0 },
-		// 8. Low right flank (short stem)
-		{ normX: 0.72, tierY: 0, spreadOffset: 0.85, tilt: 0.38, depth: 0 },
-		// 9. Mid center-left (medium stem)
-		{ normX: -0.2, tierY: 1, spreadOffset: 0.3, tilt: -0.08, depth: 1 },
-		// 10. Mid center-right (medium stem)
-		{ normX: 0.2, tierY: 1, spreadOffset: 0.3, tilt: 0.08, depth: 1 },
-		// 11. Far left wing (medium-low stem)
-		{ normX: -0.88, tierY: 1, spreadOffset: 0.95, tilt: -0.45, depth: 1 },
-		// 12. Far right wing (medium-low stem)
-		{ normX: 0.88, tierY: 1, spreadOffset: 0.95, tilt: 0.45, depth: 1 }
-	];
+	// Rotate around X (pitch)
+	const cosX = Math.cos(pitchX);
+	const sinX = Math.sin(pitchX);
+	const y2 = y1 * cosX - z1 * sinX;
+	const z2 = y1 * sinX + z1 * cosX;
 
-	return slots.slice(0, count);
+	return [x1, y2, z2];
 }
 
 export function createBouquetState(
@@ -160,67 +142,140 @@ export function createBouquetState(
 		butterfliesCount?: number;
 	} = {}
 ): BouquetState {
-	const items = options.flowerItems && options.flowerItems.length > 0
-		? options.flowerItems
-		: [{ type: 'lily' as const, color: 'red' as const }];
+	const items =
+		options.flowerItems && options.flowerItems.length > 0
+			? options.flowerItems
+			: [{ type: 'lily' as const, color: 'red' as const }];
 
 	const count = items.length;
 	const rootX = width / 2;
-	const rootY = height * 0.90; // Base where stems bunch together
+	// Raise base of stems from height * 0.90 to 0.78 for proportionate, natural stem lengths
+	const rootY = height * 0.78;
+	const bouquetCenterY = height * 0.44;
 
-	// Base center height for the bouquet dome
-	const bouquetCenterY = height * 0.48;
-	const maxSpreadW = Math.min(width * 0.46, 310);
+	// Harmonious bouquet ring radii
+	const innerRingR = Math.min(width * 0.12, 85);
+	const outerRingR = Math.min(width * 0.22, 160);
 
-	const slots = getTieredStemSlots(count);
 	const flowers: FlowerInstance[] = [];
+
+	// Tiered ring distribution ensuring clear visual separation during 360° rotation
+	function getFlowerSlot(idx: number, total: number): { x3D: number; y3D: number; z3D: number; scale: number; tier: number } {
+		if (total === 1) {
+			return { x3D: 0, y3D: bouquetCenterY - rootY - 45, z3D: 0, scale: 0.95, tier: 2 };
+		}
+		if (total <= 4) {
+			// Small bouquet: gentle ring around center
+			const a = (idx * Math.PI * 2) / total;
+			const r = innerRingR * 0.85;
+			return {
+				x3D: Math.cos(a) * r,
+				y3D: bouquetCenterY - rootY - 35 + (idx % 2) * 10,
+				z3D: Math.sin(a) * r,
+				scale: 0.88,
+				tier: 1
+			};
+		}
+
+		// 5 to 12 flowers:
+		// Index 0: Center crown flower (highest point)
+		if (idx === 0) {
+			return { x3D: 0, y3D: bouquetCenterY - rootY - 50, z3D: 0, scale: 0.86, tier: 2 };
+		}
+
+		// Inner ring: up to 3 flowers (indices 1, 2, 3)
+		const innerCount = Math.min(3, Math.floor((total - 1) * 0.4));
+		if (idx <= innerCount) {
+			const ringIdx = idx - 1;
+			const a = (ringIdx * Math.PI * 2) / innerCount;
+			return {
+				x3D: Math.cos(a) * innerRingR,
+				y3D: bouquetCenterY - rootY - 32,
+				z3D: Math.sin(a) * innerRingR,
+				scale: 0.80,
+				tier: 1
+			};
+		}
+
+		// Outer ring: remaining flowers
+		const outerCount = total - 1 - innerCount;
+		const ringIdx = idx - 1 - innerCount;
+		const a = (ringIdx * Math.PI * 2) / outerCount + (Math.PI / outerCount) * 0.5;
+		return {
+			x3D: Math.cos(a) * outerRingR,
+			y3D: bouquetCenterY - rootY - 18,
+			z3D: Math.sin(a) * outerRingR,
+			scale: 0.74,
+			tier: 0
+		};
+	}
 
 	for (let i = 0; i < count; i++) {
 		const item = items[i];
-		const slot = slots[i % slots.length];
+		const slot = getFlowerSlot(i, count);
+		const { x3D, y3D, z3D, scale, tier } = slot;
 
-		// Calculate varied target Y based on tier:
-		// Tier 0 (short front stem): Y is lower (+55px to +75px)
-		// Tier 1 (mid stem): Y is middle (-10px to +20px)
-		// Tier 2 (tall back stem): Y is high (-65px to -90px)
-		let tierYOffset = 0;
-		if (slot.tierY === 0) {
-			tierYOffset = 65; // Short stem, sits right above base leaves
-		} else if (slot.tierY === 1) {
-			tierYOffset = 5;  // Mid stem
+		// 3D Bézier stem control points (world space centered at root base X=0, Z=0)
+		const p0_3D: [number, number, number] = [0, 0, 0];
+		const midHeight = y3D * (tier === 0 ? 0.45 : 0.58);
+		const p1_3D: [number, number, number] = [x3D * 0.20, y3D * 0.20, z3D * 0.20];
+		const p2_3D: [number, number, number] = [x3D * 0.82, midHeight, z3D * 0.82];
+		const p3_3D: [number, number, number] = [x3D, y3D, z3D];
+
+		// Outward and slightly upward tilted 3D normal vector
+		const normDist = Math.hypot(x3D, z3D);
+		const tiltAmount = 0.08 + (tier === 0 ? 0.15 : tier === 1 ? 0.08 : 0);
+		let normal3D: [number, number, number];
+		let tangentU: [number, number, number];
+		let tangentV: [number, number, number];
+
+		if (normDist < 1e-4) {
+			// Center crown flower (facing upward / toward camera)
+			normal3D = [0, -1, 0];
+			tangentU = [1, 0, 0];
+			tangentV = [0, 0, 1];
 		} else {
-			tierYOffset = -75; // Tall stem, crowns the bouquet
+			const nx = (x3D / normDist) * Math.sin(tiltAmount);
+			const ny = -Math.cos(tiltAmount); // pointing upwards
+			const nz = (z3D / normDist) * Math.sin(tiltAmount);
+			normal3D = [nx, ny, nz];
+
+			const up: [number, number, number] = [0, -1, 0];
+			const tx = up[1] * nz - up[2] * ny;
+			const ty = up[2] * nx - up[0] * nz;
+			const tz = up[0] * ny - up[1] * nx;
+			const tLen = Math.hypot(tx, ty, tz);
+			if (tLen < 1e-4) {
+				tangentU = [1, 0, 0];
+				tangentV = [0, 0, 1];
+			} else {
+				tangentU = [tx / tLen, ty / tLen, tz / tLen];
+				const vx = ny * tangentU[2] - nz * tangentU[1];
+				const vy = nz * tangentU[0] - nx * tangentU[2];
+				const vz = nx * tangentU[1] - ny * tangentU[0];
+				const vLen = Math.hypot(vx, vy, vz) || 1;
+				tangentV = [vx / vLen, vy / vLen, vz / vLen];
+			}
 		}
 
-		const spreadX = slot.normX * maxSpreadW;
-		const targetX = rootX + spreadX;
-		const targetY = bouquetCenterY + tierYOffset + (Math.sin(i * 2.8) * 10);
+		// 2D fallback positions for default rendering
+		const targetX = rootX + x3D;
+		const targetY = rootY + y3D;
 
-		// Natural curve control points with varied curvature per tier
-		const stemHeight = rootY - targetY;
-		const midY = rootY - stemHeight * (slot.tierY === 0 ? 0.45 : 0.58);
-		const curveBend = spreadX * 0.58;
-
-		const p0: [number, number] = [rootX, rootY];
-		const p1: [number, number] = [rootX + curveBend * 0.35, rootY - stemHeight * 0.2];
-		const p2: [number, number] = [targetX - curveBend * 0.1, midY];
-		const p3: [number, number] = [targetX, targetY];
-
-		// Leaves along stem - short stems have 2 leaves, tall stems have 3 leaves
-		const leafCount = slot.tierY === 0 ? 2 : 3;
+		const leafCount = tier === 0 ? 2 : 3;
 		const leaves: Array<{ t: number; side: 1 | -1; length: number; angle: number }> = [];
 		for (let l = 0; l < leafCount; l++) {
-			const t = 0.22 + l * 0.26 + (Math.sin(i + l) * 0.03);
-			const side: 1 | -1 = (l % 2 === 0 ? 1 : -1) * (spreadX >= 0 ? 1 : -1) as 1 | -1;
-			const length = 42 + Math.cos(i * 2 + l) * 12;
-			const angle = (side * 0.55) + (spreadX / maxSpreadW) * 0.25;
+			const t = 0.22 + l * 0.26 + Math.sin(i + l) * 0.03;
+			const side: 1 | -1 = (l % 2 === 0 ? 1 : -1) * (x3D >= 0 ? 1 : -1) as 1 | -1;
+			const length = 36 + Math.cos(i * 2 + l) * 8;
+			const angle = side * 0.55 + (x3D / outerRingR) * 0.20;
 			leaves.push({ t, side, length, angle });
 		}
 
 		const colors = COLOR_PROFILES[item.color] ?? COLOR_PROFILES.red;
-		// Staggered bloom: short front stems bloom first, tall back stems follow
-		const bloomDelay = 0.22 + (2 - slot.tierY) * 0.08 + Math.abs(slot.normX) * 0.08;
-		const bloomDuration = 0.42 + (i % 2) * 0.05;
+		// Snappy, lively bloom: stems emerge immediately, petals burst open into full glory quickly
+		const bloomDelay = 0.06 + (2 - tier) * 0.03 + (normDist / outerRingR) * 0.03;
+		const bloomDuration = 0.26 + (i % 2) * 0.04;
 
 		flowers.push({
 			id: i,
@@ -230,44 +285,55 @@ export function createBouquetState(
 			y: rootY,
 			targetX,
 			targetY,
-			stemP0: p0,
-			stemP1: p1,
-			stemP2: p2,
-			stemP3: p3,
+			stemP0: [rootX, rootY],
+			stemP1: [rootX + x3D * 0.20, rootY + y3D * 0.20],
+			stemP2: [rootX + x3D * 0.82, rootY + midHeight],
+			stemP3: [targetX, targetY],
+			stemP0_3D: p0_3D,
+			stemP1_3D: p1_3D,
+			stemP2_3D: p2_3D,
+			stemP3_3D: p3_3D,
+			normal3D,
+			tangentU,
+			tangentV,
 			leaves,
 			baseColor: colors.base,
 			shadowColor: colors.shadow,
 			highlightColor: colors.highlight,
 			stamenColor: colors.stamen,
-			scale: slot.tierY === 0 ? 0.92 : slot.tierY === 1 ? 0.98 : 1.04,
-			tiltAngle: slot.tilt + Math.sin(i) * 0.05,
+			scale,
+			tiltAngle: (x3D / outerRingR) * 0.22 + Math.sin(i) * 0.03,
 			bloomDelay,
 			bloomDuration,
-			depth: slot.depth
+			depth: tier
 		});
 	}
 
-	// Sort flowers so Tier 2 (depth 2, background) renders first, Tier 0 (foreground) renders on top
-	flowers.sort((a, b) => b.depth - a.depth);
-
-	// Dense base foliage leaves hugging the base
-	const foliageLeaves = [];
+	// 3D Foliage leaves at the base
+	const foliageLeaves: FoliageLeaf[] = [];
 	const baseLeafCount = 20;
 	for (let f = 0; f < baseLeafCount; f++) {
-		const fNorm = (f / (baseLeafCount - 1)) * 2 - 1;
-		const fAngle = fNorm * 1.15;
+		const fAngle = (f / baseLeafCount) * Math.PI * 2;
 		const fLen = 75 + Math.sin(f * 2.3) * 30;
-		const leafP0: [number, number] = [rootX + (Math.sin(f) * 22), rootY - 6];
-		const leafP1: [number, number] = [rootX + Math.sin(fAngle) * (fLen * 0.38), rootY - (fLen * 0.32)];
-		const leafP2: [number, number] = [rootX + Math.sin(fAngle) * (fLen * 0.78), rootY - (fLen * 0.72)];
-		const leafP3: [number, number] = [rootX + Math.sin(fAngle) * fLen, rootY - (fLen * 0.94)];
+		const lx = Math.cos(fAngle) * fLen;
+		const lz = Math.sin(fAngle) * fLen * 0.7;
+		const ly = -fLen * 0.35;
+
+		const leafP0_3D: [number, number, number] = [0, 0, 0];
+		const leafP1_3D: [number, number, number] = [lx * 0.38, ly * 0.35, lz * 0.38];
+		const leafP2_3D: [number, number, number] = [lx * 0.78, ly * 0.75, lz * 0.78];
+		const leafP3_3D: [number, number, number] = [lx, ly, lz];
 
 		foliageLeaves.push({
-			p0: leafP0,
-			p1: leafP1,
-			p2: leafP2,
-			p3: leafP3,
-			growthDelay: 0.04 + Math.abs(fNorm) * 0.08,
+			p0: [rootX, rootY],
+			p1: [rootX + lx * 0.38, rootY + ly * 0.35],
+			p2: [rootX + lx * 0.78, rootY + ly * 0.75],
+			p3: [rootX + lx, rootY + ly],
+			p0_3D: leafP0_3D,
+			p1_3D: leafP1_3D,
+			p2_3D: leafP2_3D,
+			p3_3D: leafP3_3D,
+			growthDelay: 0.04 + (f % 5) * 0.02,
 			color: f % 2 === 0 ? '#1b5e20' : '#2e7d32'
 		});
 	}
@@ -320,18 +386,24 @@ export function updateBouquetSimulation(
 	width: number,
 	height: number
 ) {
-	state.totalBloomProgress = progress;
+	state.totalBloomProgress = 1.0;
 
-	const rootX = width / 2;
-	const topY = height * 0.42;
-	const radX = Math.min(width * 0.4, 240);
-	const radY = Math.min(height * 0.2, 110);
-
+	// Flight paths flying across the entire screen
 	for (let i = 0; i < state.butterflies.length; i++) {
 		const b = state.butterflies[i];
-		const t = time * b.speed + b.pathOffset;
-		b.x = rootX + Math.sin(t) * radX;
-		b.y = topY + Math.sin(t * 2) * radY * 0.55;
-		b.wingAngle = Math.abs(Math.cos(time * 18));
+		const speed = b.speed * 0.15; // smooth travel speed across viewport
+		// Span wider than width so butterflies enter from off-screen and glide across
+		const period = (width + 200);
+		const rawX = ((time * 85 * speed + b.pathOffset * 100) % period) - 100;
+		// Staggered direction: alternate butterflies fly left-to-right vs right-to-left
+		b.x = i % 2 === 0 ? rawX : width - rawX;
+		
+		// Gentle fluttering vertical waves across screen
+		const baseY = height * (0.18 + (i % 3) * 0.25);
+		const waveY = Math.sin(time * 2.2 + b.pathOffset) * (height * 0.12) + Math.cos(time * 0.8 + i) * (height * 0.06);
+		b.y = Math.max(30, Math.min(height - 40, baseY + waveY));
+
+		// Rapid fluttering wings
+		b.wingAngle = Math.abs(Math.cos(time * 16 + i));
 	}
 }
