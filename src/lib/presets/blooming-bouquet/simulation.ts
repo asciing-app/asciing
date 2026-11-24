@@ -151,16 +151,22 @@ export function createBouquetState(
 
 	const count = items.length;
 	const rootX = width / 2;
+
+	// Viewport-adaptive responsive scaling: on mobile portrait screens, scale the bouquet geometry
+	// so the dome and wrapping paper stay harmoniously within bounds.
+	const isMobile = width < 600 || height < 600;
+	const mobileScale = isMobile ? Math.max(0.68, Math.min(1.0, Math.min(width / 600, height / 650))) : 1.0;
+
 	// Raise base of stems from height * 0.90 to 0.78 for proportionate, natural stem lengths
 	const rootY = height * 0.78;
 	const bouquetCenterY = height * 0.44;
 
-	// Harmonious bouquet ring radii
-	const innerRingR = Math.min(width * 0.12, 85);
-	const outerRingR = Math.min(width * 0.22, 160);
+	// Harmonious bouquet ring radii with mobile scaling
+	const innerRingR = Math.min(width * 0.12, 85) * mobileScale;
+	const outerRingR = Math.min(width * 0.22, 160) * mobileScale;
 
 	// Adaptive density scale factor so small bouquets look lush and large bouquets don't collide
-	const baseDensityScale = Math.max(0.52, Math.min(0.88, 1.65 / Math.sqrt(count + 2)));
+	const baseDensityScale = Math.max(0.42, Math.min(0.88, 1.65 / Math.sqrt(count + 2))) * mobileScale;
 
 	const flowers: FlowerInstance[] = [];
 
@@ -170,19 +176,18 @@ export function createBouquetState(
 		return s - Math.floor(s);
 	}
 
-	// Wrapper rim position is at y = -topH * 0.78 = -117 relative to root.
-	// Flower petals have radius ~50-65px, plus pitch tilts the flower head downward by z * sin(pitch) (~30-40px).
-	// To guarantee that flower heads and all their petals always stay well above the wrapper rim
-	// and never overlap or spill outside the paper cone, the lowest flower center is clamped to:
-	// wrapperLimitY = -215.
-	const apexY = bouquetCenterY - rootY - 54;
-	const wrapperLimitY = Math.min(-215, bouquetCenterY - rootY + 25);
-	const maxDrop = Math.max(20, wrapperLimitY - apexY); // Available vertical range
+	// Wrapper rim position is at y = -topH * 0.78 = -117 relative to root (scaled by mobileScale).
+	// Stem length between root and bouquet center: stemLength = rootY - bouquetCenterY.
+	// We keep all flower heads comfortably above the wrapping paper cone opening.
+	const stemLength = rootY - bouquetCenterY;
+	const apexY = -stemLength - 50 * mobileScale;
+	const wrapperLimitY = -Math.max(160 * mobileScale, stemLength * 0.65);
+	const maxDrop = Math.max(18, wrapperLimitY - apexY); // Available vertical range
 
 	// Tiered ring distribution with organic randomized stem heights (cradled safely above the wrapper, never taller than apex)
 	function getFlowerSlot(idx: number, total: number): { x3D: number; y3D: number; z3D: number; scale: number; tier: number } {
 		if (total === 1) {
-			return { x3D: 0, y3D: apexY, z3D: 0, scale: 0.95, tier: 2 };
+			return { x3D: 0, y3D: apexY, z3D: 0, scale: 0.95 * mobileScale, tier: 2 };
 		}
 
 		// Center apex crown flower (index 0 for total >= 5)
@@ -194,7 +199,7 @@ export function createBouquetState(
 			const a = (idx * Math.PI * 2) / total;
 			const r = innerRingR * 0.85;
 			const hFrac = hash(idx + 1);
-			const drop = 12 + hFrac * (maxDrop * 0.75);
+			const drop = 12 * mobileScale + hFrac * (maxDrop * 0.75);
 			const flowerY = Math.min(wrapperLimitY, apexY + drop);
 			return {
 				x3D: Math.cos(a) * r,
@@ -211,7 +216,7 @@ export function createBouquetState(
 				const ringIdx = idx - 1;
 				const a = (ringIdx * Math.PI * 2) / innerCount + 0.2;
 				const hFrac = hash(idx * 7 + 3);
-				const drop = 14 + hFrac * (maxDrop * 0.55);
+				const drop = 14 * mobileScale + hFrac * (maxDrop * 0.55);
 				const flowerY = Math.min(wrapperLimitY, apexY + drop);
 				return {
 					x3D: Math.cos(a) * (innerRingR * 0.95),
@@ -227,7 +232,7 @@ export function createBouquetState(
 			const ringIdx = idx - 1 - innerCount;
 			const a = (ringIdx * Math.PI * 2) / outerCount + (Math.PI / outerCount) * 0.5;
 			const hFrac = hash(idx * 13 + 5);
-			const drop = 22 + hFrac * (maxDrop - 24);
+			const drop = 20 * mobileScale + hFrac * (maxDrop - 22 * mobileScale);
 			const flowerY = Math.min(wrapperLimitY, apexY + drop);
 			// For flowers closest to the collar, pull radius slightly inward so petals don't spill out sideways
 			const radialPull = 0.96 - (hFrac * 0.12);
@@ -249,7 +254,7 @@ export function createBouquetState(
 			const ringIdx = idx - 1;
 			const a = (ringIdx * Math.PI * 2) / c1;
 			const hFrac = hash(idx * 11 + 2);
-			const drop = 14 + hFrac * (maxDrop * 0.45);
+			const drop = 14 * mobileScale + hFrac * (maxDrop * 0.45);
 			return {
 				x3D: Math.cos(a) * (innerRingR * 0.8),
 				y3D: Math.min(wrapperLimitY, apexY + drop),
@@ -261,7 +266,7 @@ export function createBouquetState(
 			const ringIdx = idx - 1 - c1;
 			const a = (ringIdx * Math.PI * 2) / c2 + 0.25;
 			const hFrac = hash(idx * 17 + 4);
-			const drop = 24 + hFrac * (maxDrop * 0.70);
+			const drop = 22 * mobileScale + hFrac * (maxDrop * 0.70);
 			return {
 				x3D: Math.cos(a) * (outerRingR * 0.68),
 				y3D: Math.min(wrapperLimitY, apexY + drop),
@@ -273,7 +278,7 @@ export function createBouquetState(
 			const ringIdx = idx - 1 - c1 - c2;
 			const a = (ringIdx * Math.PI * 2) / c3 + 0.5;
 			const hFrac = hash(idx * 23 + 7);
-			const drop = 32 + hFrac * (maxDrop - 34);
+			const drop = 30 * mobileScale + hFrac * (maxDrop - 32 * mobileScale);
 			const radialPull = 0.96 - (hFrac * 0.12);
 			return {
 				x3D: Math.cos(a) * (outerRingR * 1.02 * radialPull),
