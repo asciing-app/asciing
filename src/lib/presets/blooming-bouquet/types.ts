@@ -73,6 +73,16 @@ export interface Butterfly {
 	speed: number;
 	pathOffset: number;
 	wingAngle: number;
+	// Organic random flight trajectory parameters
+	baseXFrac?: number;
+	baseYFrac?: number;
+	radiusX?: number;
+	radiusY?: number;
+	freqX?: number;
+	freqY?: number;
+	freqZ?: number;
+	phaseX?: number;
+	phaseY?: number;
 }
 
 export interface FoliageLeaf {
