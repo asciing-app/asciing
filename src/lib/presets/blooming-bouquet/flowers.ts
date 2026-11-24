@@ -614,10 +614,14 @@ export function drawBouquetWrappingPaper(
 	rootY: number,
 	angleY: number = 0,
 	pitchX: number = 0.26,
-	layer: 'back' | 'front' | 'all' = 'all'
+	layer: 'back' | 'front' | 'all' = 'all',
+	scale: number = 1.0
 ) {
 	ctx.save();
 	ctx.translate(rootX, rootY);
+	if (scale !== 1.0) {
+		ctx.scale(scale, scale);
+	}
 
 	// Kraft paper geometry:
 	// Elegant, tailored florist wrap cradling the bouquet dome
