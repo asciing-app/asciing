@@ -152,21 +152,23 @@ export function createBouquetState(
 	const count = items.length;
 	const rootX = width / 2;
 
-	// Viewport-adaptive responsive scaling: on mobile portrait screens, scale the bouquet geometry
-	// so the dome and wrapping paper stay harmoniously within bounds.
+	// Viewport-adaptive responsive scaling: on mobile screens, prevent stems from stretching into tall stilts
 	const isMobile = width < 600 || height < 600;
-	const mobileScale = isMobile ? Math.max(0.68, Math.min(1.0, Math.min(width / 600, height / 650))) : 1.0;
+	const mobileScale = isMobile ? Math.max(0.72, Math.min(1.0, width / 480)) : 1.0;
 
-	// Raise base of stems from height * 0.90 to 0.78 for proportionate, natural stem lengths
-	const rootY = height * 0.78;
-	const bouquetCenterY = height * 0.44;
+	// Anchor base of stems: on mobile use 76% height, desktop 78% height
+	const rootY = height * (isMobile ? 0.76 : 0.78);
+	// Proportional stem length: clamp maximum stem length on mobile so tall portrait screens don't stretch stems
+	const maxStemLength = isMobile ? 195 : 250;
+	const stemLength = Math.min(maxStemLength, Math.max(165, height * 0.34));
+	const bouquetCenterY = rootY - stemLength;
 
 	// Harmonious bouquet ring radii with mobile scaling
 	const innerRingR = Math.min(width * 0.12, 85) * mobileScale;
 	const outerRingR = Math.min(width * 0.22, 160) * mobileScale;
 
 	// Adaptive density scale factor so small bouquets look lush and large bouquets don't collide
-	const baseDensityScale = Math.max(0.42, Math.min(0.88, 1.65 / Math.sqrt(count + 2))) * mobileScale;
+	const baseDensityScale = Math.max(0.44, Math.min(0.88, 1.65 / Math.sqrt(count + 2))) * mobileScale;
 
 	const flowers: FlowerInstance[] = [];
 
@@ -176,12 +178,10 @@ export function createBouquetState(
 		return s - Math.floor(s);
 	}
 
-	// Wrapper rim position is at y = -topH * 0.78 = -117 relative to root (scaled by mobileScale).
-	// Stem length between root and bouquet center: stemLength = rootY - bouquetCenterY.
-	// We keep all flower heads comfortably above the wrapping paper cone opening.
-	const stemLength = rootY - bouquetCenterY;
-	const apexY = -stemLength - 50 * mobileScale;
-	const wrapperLimitY = -Math.max(160 * mobileScale, stemLength * 0.65);
+	// Wrapper cone reaches ~66% up the stemLength (rimY = -stemLength * 0.66).
+	// We keep all flower heads and petals comfortably above the wrapping paper cone opening.
+	const apexY = -stemLength - 48 * mobileScale;
+	const wrapperLimitY = -stemLength * 0.72; // Generous buffer above wrapper rim (-stemLength * 0.66)
 	const maxDrop = Math.max(18, wrapperLimitY - apexY); // Available vertical range
 
 	// Tiered ring distribution with organic randomized stem heights (cradled safely above the wrapper, never taller than apex)
