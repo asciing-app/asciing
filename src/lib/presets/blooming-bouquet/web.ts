@@ -83,10 +83,10 @@ export function mountWeb(ctx: MountContext): () => void {
 
 		const fontSize = Math.max(6, Math.min(11, Number(params.fontSize ?? 7.2)));
 
-		// 3D Controls - permanent 40 degree elevation
+		// 3D Controls - natural three-quarter 28 degree elevation
 		const rotate3d = params.rotate3d !== false;
 		const rotationSpeed = Number(params.rotationSpeed ?? 0.25);
-		const cameraPitch = (40 * Math.PI) / 180;
+		const cameraPitch = (28 * Math.PI) / 180;
 
 		// Character ramp & custom charset
 		const rampType = String(params.charRamp ?? 'standard');
@@ -103,7 +103,7 @@ export function mountWeb(ctx: MountContext): () => void {
 
 		const showWrapping = params.wrappingPaper !== false;
 		const showSparkles = params.sparkles !== false;
-		const butterflyCount = Number(params.butterflies ?? 2);
+		const butterflyCount = Number(params.butterflies ?? 10);
 		const overlayText = String(params.overlayText ?? 'Who needs flowers when you can code them?');
 
 		const configKey = `${width}_${height}_${lilies}_${roses}_${tulips}_${daisies}_${orchids}_${colorPalette}_${butterflyCount}`;
@@ -158,7 +158,8 @@ export function mountWeb(ctx: MountContext): () => void {
 		// Helper to project 3D point (world origin at root base) to screen coords
 		function project3D(p: [number, number, number]): { x: number; y: number; z: number; scale: number } {
 			const rotated = rotatePoint3D(p, currentAngleY, cameraPitch);
-			const zView = rotated[2] + camDist;
+			// In camera space, distance increases as rotated z decreases
+			const zView = camDist - rotated[2];
 			const sc = focalLen / Math.max(100, zView);
 			return {
 				x: rootScreenX + rotated[0] * sc,
