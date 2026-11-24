@@ -7,7 +7,7 @@ export const bloomingBouquetPreset: PresetDefinition = {
 	title: 'Blooming Bouquet',
 	description:
 		'Generative ASCII bouquet studio. Add and subtract your favorite flowers (Lilies, Roses, Tulips, Daisies, Orchids) with compact button counters, blooming with thick filled stems and dense cross-stitch petals.',
-	tags: ['2D', 'Procedural', 'Organic', 'Flowers', 'Animation', 'Cross-Stitch'],
+	tags: ['3D', 'Procedural', 'Organic', 'Flowers', 'Animation', 'Cross-Stitch'],
 	version: 1,
 	controls: [
 		{
@@ -17,7 +17,7 @@ export const bloomingBouquetPreset: PresetDefinition = {
 			type: 'counter',
 			min: 0,
 			max: 12,
-			default: 5
+			default: 2
 		},
 		{
 			key: 'roses',
@@ -35,7 +35,7 @@ export const bloomingBouquetPreset: PresetDefinition = {
 			type: 'counter',
 			min: 0,
 			max: 12,
-			default: 1
+			default: 2
 		},
 		{
 			key: 'daisies',
@@ -44,7 +44,7 @@ export const bloomingBouquetPreset: PresetDefinition = {
 			type: 'counter',
 			min: 0,
 			max: 12,
-			default: 0
+			default: 2
 		},
 		{
 			key: 'orchids',
@@ -53,7 +53,22 @@ export const bloomingBouquetPreset: PresetDefinition = {
 			type: 'counter',
 			min: 0,
 			max: 12,
-			default: 0
+			default: 2
+		},
+		{
+			key: 'rotate3d',
+			label: '3D Auto-Rotation',
+			type: 'toggle',
+			default: true
+		},
+		{
+			key: 'rotationSpeed',
+			label: '3D Rotation Speed',
+			type: 'slider',
+			min: 0.0,
+			max: 1.5,
+			step: 0.05,
+			default: 0.25
 		},
 		{
 			key: 'colorPalette',
@@ -68,15 +83,6 @@ export const bloomingBouquetPreset: PresetDefinition = {
 				{ label: 'Vintage Botanical Garden', value: 'vintage-garden' }
 			],
 			default: 'sunset'
-		},
-		{
-			key: 'bloomSpeed',
-			label: 'Bloom Animation Speed',
-			type: 'slider',
-			min: 0.3,
-			max: 2.5,
-			step: 0.1,
-			default: 1.0
 		},
 		{
 			key: 'charRamp',
@@ -129,15 +135,6 @@ export const bloomingBouquetPreset: PresetDefinition = {
 			max: 4,
 			step: 1,
 			default: 2
-		},
-		{
-			key: 'holdDuration',
-			label: 'Stay in Full Bloom (Seconds)',
-			type: 'slider',
-			min: 5,
-			max: 60,
-			step: 5,
-			default: 20
 		},
 		{
 			key: 'overlayText',
