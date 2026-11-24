@@ -150,8 +150,9 @@ export function mountWeb(ctx: MountContext): () => void {
 		const autoAngle = rotate3d ? time * rotationSpeed : 0;
 		const currentAngleY = autoAngle + userOrbitAngle;
 
+		const isMobile = width < 600 || height < 600;
 		const rootScreenX = width / 2;
-		const rootScreenY = height * 0.78;
+		const rootScreenY = height * (isMobile ? 0.76 : 0.78);
 		const camDist = 650;
 		const focalLen = 650;
 
@@ -211,9 +212,10 @@ export function mountWeb(ctx: MountContext): () => void {
 		// Sort flowers by Z-depth (Painter's algorithm: lowest z / farthest back drawn first)
 		const sortedFlowers = [...bouquetState.flowers].sort((a, b) => (a.currentZ ?? 0) - (b.currentZ ?? 0));
 
-		// Viewport mobile scale factor
-		const isMobile = width < 600 || height < 600;
-		const wrapScale = isMobile ? Math.max(0.68, Math.min(1.0, Math.min(width / 600, height / 650))) : 1.0;
+		// Proportional wrapping paper scale so wrapper covers ~66% of the stem bundle on all screen sizes
+		const maxStemLength = isMobile ? 195 : 250;
+		const stemLength = Math.min(maxStemLength, Math.max(165, height * 0.34));
+		const wrapScale = (stemLength * 0.85) / 150.0;
 
 		// 1. Draw Rear Kraft Wrapping Paper cavity (behind stems)
 		if (showWrapping) {
