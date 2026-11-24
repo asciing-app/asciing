@@ -167,9 +167,9 @@ export function drawDetailedLily(
 	ctx.translate(flower.targetX, flower.targetY);
 	ctx.rotate(flower.tiltAngle + breezeAngle);
 
-	// Closed bud phase (0.0 to 0.22)
-	if (bloom < 0.22) {
-		const budProg = bloom / 0.22;
+	// Closed bud phase (0.0 to 0.08)
+	if (bloom < 0.08) {
+		const budProg = bloom / 0.08;
 		const budH = maxR * 0.8 * (0.4 + 0.6 * budProg);
 		const budW = budH * 0.28;
 
@@ -187,8 +187,8 @@ export function drawDetailedLily(
 		return;
 	}
 
-	const open = easeOutCubic(Math.min(1.0, (bloom - 0.22) / 0.78));
-	const currentRadius = maxR * (0.32 + 0.68 * open);
+	const open = easeOutCubic(Math.min(1.0, (bloom - 0.08) / 0.92));
+	const currentRadius = maxR * (0.35 + 0.65 * open);
 
 	// 6 petals in 2 layers: outer 3 sepals first (deeper), inner 3 petals on top
 	const layers = [
@@ -491,7 +491,7 @@ export function drawDetailedDaisy(
 }
 
 /**
- * Detailed Orchid with graceful lateral petals and ruffled labellum
+ * Beautiful, natural Phalaenopsis Orchid with graceful layered petals, ruffled labellum and column
  */
 export function drawDetailedOrchid(
 	ctx: CanvasRenderingContext2D,
@@ -501,123 +501,235 @@ export function drawDetailedOrchid(
 ) {
 	const scale = flower.scale;
 	const open = easeOutCubic(bloom);
-	const r = 82 * scale * (0.35 + 0.65 * open);
+	const r = 88 * scale * (0.35 + 0.65 * open);
 
 	ctx.save();
 	ctx.translate(flower.targetX, flower.targetY);
 	ctx.rotate(flower.tiltAngle + breezeAngle);
 
-	// Dorsal sepal
+	// 1. Three Outer Sepals (dorsal top, lower left, lower right)
+	const sepals = [
+		{ angle: -Math.PI / 2, len: r * 0.95, w: r * 0.42 },
+		{ angle: Math.PI * 0.28, len: r * 0.88, w: r * 0.38 },
+		{ angle: Math.PI * 0.72, len: r * 0.88, w: r * 0.38 }
+	];
+
+	for (const s of sepals) {
+		ctx.save();
+		ctx.rotate(s.angle);
+
+		ctx.beginPath();
+		ctx.moveTo(0, 0);
+		ctx.bezierCurveTo(-s.w * 0.6, s.len * 0.3, -s.w * 0.5, s.len * 0.8, 0, s.len);
+		ctx.bezierCurveTo(s.w * 0.5, s.len * 0.8, s.w * 0.6, s.len * 0.3, 0, 0);
+		ctx.closePath();
+
+		const sGrad = ctx.createLinearGradient(0, 0, 0, s.len);
+		sGrad.addColorStop(0, flower.shadowColor);
+		sGrad.addColorStop(0.35, flower.baseColor);
+		sGrad.addColorStop(1, flower.highlightColor);
+		ctx.fillStyle = sGrad;
+		ctx.fill();
+
+		ctx.restore();
+	}
+
+	// 2. Two Broad Lateral Petals (prominent round orchid wings)
+	const wingAngles = [-0.15, Math.PI + 0.15];
+	const wingW = r * 0.68;
+	const wingH = r * 0.58;
+
+	for (const wa of wingAngles) {
+		ctx.save();
+		ctx.rotate(wa);
+
+		ctx.beginPath();
+		ctx.ellipse(r * 0.52, 0, wingW * 0.55, wingH * 0.5, 0, 0, Math.PI * 2);
+
+		const wGrad = ctx.createRadialGradient(r * 0.2, 0, 0, r * 0.5, 0, wingW * 0.6);
+		wGrad.addColorStop(0, flower.shadowColor);
+		wGrad.addColorStop(0.4, flower.baseColor);
+		wGrad.addColorStop(0.9, flower.highlightColor);
+		wGrad.addColorStop(1, '#ffffff');
+		ctx.fillStyle = wGrad;
+		ctx.fill();
+
+		// Delicate petal edge highlight
+		ctx.strokeStyle = flower.highlightColor;
+		ctx.lineWidth = 1.2;
+		ctx.stroke();
+
+		ctx.restore();
+	}
+
+	// 3. Central Ruffled Labellum (Lip)
+	ctx.save();
+	ctx.translate(0, r * 0.32);
+
+	// Labellum heart/lobe
 	ctx.beginPath();
-	ctx.ellipse(0, -r * 0.7, r * 0.34, r * 0.5, 0, 0, Math.PI * 2);
-	ctx.fillStyle = flower.highlightColor;
+	ctx.moveTo(0, -r * 0.15);
+	ctx.bezierCurveTo(-r * 0.42, -r * 0.05, -r * 0.38, r * 0.45, 0, r * 0.42);
+	ctx.bezierCurveTo(r * 0.38, r * 0.45, r * 0.42, -r * 0.05, 0, -r * 0.15);
+	ctx.closePath();
+
+	const lipGrad = ctx.createRadialGradient(0, 0, 0, 0, r * 0.1, r * 0.42);
+	lipGrad.addColorStop(0, '#ffd600');
+	lipGrad.addColorStop(0.3, flower.shadowColor);
+	lipGrad.addColorStop(0.85, flower.baseColor);
+	lipGrad.addColorStop(1, flower.shadowColor);
+	ctx.fillStyle = lipGrad;
 	ctx.fill();
 
-	// Lateral wings
+	// Speckles inside labellum
+	ctx.fillStyle = '#4a0000';
+	for (let sp = -2; sp <= 2; sp++) {
+		ctx.beginPath();
+		ctx.arc(sp * 4 * scale, (sp % 2) * 3 * scale, 1.2 * scale, 0, Math.PI * 2);
+		ctx.fill();
+	}
+
+	ctx.restore();
+
+	// 4. Center Golden Column / Anther Cap
 	ctx.beginPath();
-	ctx.ellipse(-r * 0.68, -r * 0.18, r * 0.55, r * 0.32, -0.38, 0, Math.PI * 2);
-	ctx.fillStyle = flower.baseColor;
+	ctx.ellipse(0, -r * 0.02, 6 * scale, 9 * scale, 0, 0, Math.PI * 2);
+	ctx.fillStyle = '#fffde7';
 	ctx.fill();
 
 	ctx.beginPath();
-	ctx.ellipse(r * 0.68, -r * 0.18, r * 0.55, r * 0.32, 0.38, 0, Math.PI * 2);
-	ctx.fillStyle = flower.baseColor;
-	ctx.fill();
-
-	// Labellum lip
-	ctx.beginPath();
-	ctx.ellipse(0, r * 0.38, r * 0.44, r * 0.46, 0, 0, Math.PI * 2);
-	ctx.fillStyle = flower.shadowColor;
-	ctx.fill();
-
-	// Column center
-	ctx.beginPath();
-	ctx.arc(0, 0, r * 0.16, 0, Math.PI * 2);
-	ctx.fillStyle = '#ffea00';
+	ctx.ellipse(0, r * 0.05, 4 * scale, 4 * scale, 0, 0, Math.PI * 2);
+	ctx.fillStyle = '#ffd600';
 	ctx.fill();
 
 	ctx.restore();
 }
 
 /**
- * Draws chic florist kraft wrapping paper around the base of the bouquet with folded layers and a satin ribbon bow
+ * Draws chic florist kraft wrapping paper around the base of the bouquet with 3D rotation, folded layers and a satin ribbon bow
  */
 export function drawBouquetWrappingPaper(
 	ctx: CanvasRenderingContext2D,
 	rootX: number,
-	rootY: number
+	rootY: number,
+	angleY: number = 0,
+	pitchX: number = 0.26,
+	layer: 'back' | 'front' | 'all' = 'all'
 ) {
 	ctx.save();
 	ctx.translate(rootX, rootY);
 
 	// Kraft paper geometry:
-	// Base gathering point is around Y = +45px, top rim flares outward from -230px down to +45px (longer coverage)
-	const topW = 160;
-	const topH = 220;
-	const botW = 32;
-	const botH = 65;
+	// Elegant, tailored florist wrap cradling the bouquet dome
+	const topW = 125; // Compact, proportionate flared wrap
+	const topH = 150; // Balanced coverage wrapping shortened stems
+	const botW = 26;
+	const botH = 42;
+	const waistW = 40;
+	const waistH = 10;
 
-	// 1. Backing paper shadow layer (behind stems)
-	
-	// 2. Main conical Kraft paper wrapper (front folded cone)
-	const paperGrad = ctx.createLinearGradient(-topW, -topH, topW, botH);
+	// Camera pitch foreshortening for the elliptical rims
+	const pitchSin = Math.sin(pitchX);
+	const rimY = -topH * 0.78;
+	const rimHeight = topW * pitchSin * 0.45;
+
+	// Rotation calculations
+	const sinRot = Math.sin(angleY);
+	const cosRot = Math.cos(angleY);
+
+	// 1. Back Layer (drawn behind stems)
+	if (layer === 'back' || layer === 'all') {
+		// Inside dark shadow cavity of the rear kraft cone
+		ctx.beginPath();
+		ctx.ellipse(0, rimY, topW * 0.95, rimHeight, 0, Math.PI, Math.PI * 2);
+		ctx.lineTo(botW * 0.6, botH * 0.2);
+		ctx.lineTo(-botW * 0.6, botH * 0.2);
+		ctx.closePath();
+
+		const insideGrad = ctx.createLinearGradient(0, rimY - 20, 0, botH);
+		insideGrad.addColorStop(0, '#2b1b17');
+		insideGrad.addColorStop(0.5, '#3e2723');
+		insideGrad.addColorStop(1, '#1b100d');
+		ctx.fillStyle = insideGrad;
+		ctx.fill();
+
+		// Rear rim edge
+		ctx.strokeStyle = '#4e342e';
+		ctx.lineWidth = 1.8;
+		ctx.beginPath();
+		ctx.ellipse(0, rimY, topW * 0.95, rimHeight, 0, Math.PI, Math.PI * 2);
+		ctx.stroke();
+
+		if (layer === 'back') {
+			ctx.restore();
+			return;
+		}
+	}
+
+	// 2. Front Layer (drawn over lower stems, wrapping tightly around the bunch)
+	const foldShift = sinRot * 55; // Fold seam shifts left/right in 3D
+
+	// Rotating lighting gradient that catches light as the bouquet spins
+	const gradAngle = angleY + 0.6;
+	const gx0 = -Math.cos(gradAngle) * topW;
+	const gy0 = -topH * 0.5;
+	const gx1 = Math.cos(gradAngle) * topW;
+	const gy1 = botH * 0.5;
+	const paperGrad = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
 	paperGrad.addColorStop(0, '#d7ccc8');   // Pale kraft highlight
-	paperGrad.addColorStop(0.25, '#bcaaa4'); // Warm craft paper
+	paperGrad.addColorStop(0.28, '#bcaaa4'); // Warm craft paper
 	paperGrad.addColorStop(0.65, '#8d6e63'); // Medium craft fold
 	paperGrad.addColorStop(1, '#4e342e');   // Deep shadow fold
 	ctx.fillStyle = paperGrad;
 
-	// Outer Cone - taller, elegant flared florist wrap
+	// Main front conical envelope
 	ctx.beginPath();
 	ctx.moveTo(-botW, botH);
-	ctx.lineTo(-topW, -topH * 0.72);
-	ctx.quadraticCurveTo(-topW * 0.5, -topH * 0.98, 0, -topH * 0.88);
-	ctx.quadraticCurveTo(topW * 0.5, -topH * 0.98, topW, -topH * 0.72);
+	ctx.lineTo(-topW, rimY);
+	// Front half of the flared elliptical rim
+	ctx.ellipse(0, rimY, topW, rimHeight, 0, Math.PI, 0, true);
 	ctx.lineTo(botW, botH);
 	ctx.quadraticCurveTo(0, botH + 18, -botW, botH);
 	ctx.closePath();
 	ctx.fill();
 
-	// Distinct Origami / Folded Layer (Flap 1 - left diagonal fold)
+	// Front origami flap 1 (diagonal fold that turns in 3D)
 	ctx.beginPath();
-	ctx.moveTo(-topW * 0.95, -topH * 0.72);
-	ctx.lineTo(botW * 0.5, botH * 0.85);
+	ctx.moveTo(-topW * 0.85 + foldShift * 0.3, rimY);
+	ctx.lineTo(botW * 0.6, botH * 0.7);
 	ctx.lineTo(-botW * 0.8, botH);
 	ctx.closePath();
-	const foldGrad1 = ctx.createLinearGradient(-topW * 0.8, -topH * 0.6, 0, 0);
-	foldGrad1.addColorStop(0, 'rgba(255, 248, 225, 0.40)');
-	foldGrad1.addColorStop(1, 'rgba(62, 39, 35, 0.55)');
+	const foldGrad1 = ctx.createLinearGradient(-topW * 0.6 + foldShift, rimY, 0, 0);
+	foldGrad1.addColorStop(0, 'rgba(255, 248, 225, 0.42)');
+	foldGrad1.addColorStop(1, 'rgba(62, 39, 35, 0.60)');
 	ctx.fillStyle = foldGrad1;
 	ctx.fill();
 
-	// Distinct Origami / Folded Layer (Flap 2 - right diagonal cross-over fold)
+	// Front origami flap 2 (cross fold)
 	ctx.beginPath();
-	ctx.moveTo(topW * 0.95, -topH * 0.72);
-	ctx.lineTo(-botW * 0.5, botH * 0.82);
+	ctx.moveTo(topW * 0.85 + foldShift * 0.3, rimY);
+	ctx.lineTo(-botW * 0.6, botH * 0.68);
 	ctx.lineTo(botW * 0.8, botH);
 	ctx.closePath();
-	const foldGrad2 = ctx.createLinearGradient(topW * 0.8, -topH * 0.6, 0, 0);
-	foldGrad2.addColorStop(0, 'rgba(255, 236, 179, 0.48)');
+	const foldGrad2 = ctx.createLinearGradient(topW * 0.6 + foldShift, rimY, 0, 0);
+	foldGrad2.addColorStop(0, 'rgba(255, 236, 179, 0.45)');
 	foldGrad2.addColorStop(1, 'rgba(46, 26, 21, 0.65)');
 	ctx.fillStyle = foldGrad2;
 	ctx.fill();
 
-	// Crisp folded rim highlight edges
+	// Crisp rim highlight on the front lip
 	ctx.strokeStyle = '#efebe9';
 	ctx.lineWidth = 2.4;
 	ctx.beginPath();
-	ctx.moveTo(-topW, -topH * 0.72);
-	ctx.quadraticCurveTo(-topW * 0.5, -topH * 0.98, 0, -topH * 0.88);
-	ctx.quadraticCurveTo(topW * 0.5, -topH * 0.98, topW, -topH * 0.72);
+	ctx.ellipse(0, rimY, topW, rimHeight, 0, 0, Math.PI, false);
 	ctx.stroke();
 
-	// 3. Luxurious Satin Ribbon Band around the gathered waist
-	const waistY = 5;
-	const waistW = 48;
+	// 3. Luxurious Satin Ribbon around the gathered waist
+	const waistY = 12;
 
 	// Ribbon cinch band
 	ctx.beginPath();
-	ctx.ellipse(0, waistY, waistW, 9, 0, 0, Math.PI * 2);
+	ctx.ellipse(0, waistY, waistW, waistH, 0, 0, Math.PI * 2);
 	const ribbonGrad = ctx.createLinearGradient(-waistW, waistY, waistW, waistY);
 	ribbonGrad.addColorStop(0, '#f48fb1');
 	ribbonGrad.addColorStop(0.3, '#ff4081');
@@ -626,48 +738,64 @@ export function drawBouquetWrappingPaper(
 	ctx.fillStyle = ribbonGrad;
 	ctx.fill();
 
-	// Ribbon Bow Loops
-	// Left loop
-	ctx.beginPath();
-	ctx.ellipse(-24, waistY - 6, 18, 10, -0.35, 0, Math.PI * 2);
-	ctx.fillStyle = '#ff4081';
-	ctx.fill();
-	ctx.strokeStyle = '#ffe4ec';
-	ctx.lineWidth = 1.5;
-	ctx.stroke();
+	// 3D Satin Ribbon Bow:
+	// Rotates around the waist ellipse in 3D!
+	const bowX = sinRot * (waistW * 0.85);
+	const bowFacing = cosRot; // > 0 is front, < 0 is back
 
-	// Right loop
-	ctx.beginPath();
-	ctx.ellipse(24, waistY - 6, 18, 10, 0.35, 0, Math.PI * 2);
-	ctx.fillStyle = '#ff4081';
-	ctx.fill();
-	ctx.strokeStyle = '#ffe4ec';
-	ctx.lineWidth = 1.5;
-	ctx.stroke();
+	if (bowFacing > -0.25) {
+		const bowScale = 0.6 + 0.4 * Math.max(0, (bowFacing + 0.25) / 1.25);
+		const knotY = waistY + waistH * 0.4 * Math.sin(angleY * 0.5);
 
-	// Center knot
-	ctx.beginPath();
-	ctx.ellipse(0, waistY, 7, 7, 0, 0, Math.PI * 2);
-	ctx.fillStyle = '#f50057';
-	ctx.fill();
-	ctx.stroke();
+		ctx.save();
+		ctx.translate(bowX, knotY);
+		ctx.scale(bowScale, 1.0);
 
-	// Trailing ribbon tails
-	ctx.beginPath();
-	ctx.moveTo(-4, waistY + 4);
-	ctx.bezierCurveTo(-18, waistY + 25, -28, waistY + 45, -34, waistY + 68);
-	ctx.strokeStyle = '#ff4081';
-	ctx.lineWidth = 4;
-	ctx.lineCap = 'round';
-	ctx.stroke();
+		// Left loop
+		ctx.beginPath();
+		ctx.ellipse(-24, -6, 20, 11, -0.32, 0, Math.PI * 2);
+		ctx.fillStyle = '#ff4081';
+		ctx.fill();
+		ctx.strokeStyle = '#ffe4ec';
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
 
-	ctx.beginPath();
-	ctx.moveTo(4, waistY + 4);
-	ctx.bezierCurveTo(18, waistY + 25, 28, waistY + 45, 34, waistY + 68);
-	ctx.strokeStyle = '#ff4081';
-	ctx.lineWidth = 4;
-	ctx.lineCap = 'round';
-	ctx.stroke();
+		// Right loop
+		ctx.beginPath();
+		ctx.ellipse(24, -6, 20, 11, 0.32, 0, Math.PI * 2);
+		ctx.fillStyle = '#ff4081';
+		ctx.fill();
+		ctx.strokeStyle = '#ffe4ec';
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
+
+		// Center knot
+		ctx.beginPath();
+		ctx.ellipse(0, 0, 8, 8, 0, 0, Math.PI * 2);
+		ctx.fillStyle = '#f50057';
+		ctx.fill();
+		ctx.stroke();
+
+		// Trailing ribbon tails swaying with 3D rotation
+		const tailSway = sinRot * 12;
+		ctx.beginPath();
+		ctx.moveTo(-4, 5);
+		ctx.bezierCurveTo(-18 + tailSway, 26, -28 + tailSway, 50, -32 + tailSway, 72);
+		ctx.strokeStyle = '#ff4081';
+		ctx.lineWidth = 4.2;
+		ctx.lineCap = 'round';
+		ctx.stroke();
+
+		ctx.beginPath();
+		ctx.moveTo(4, 5);
+		ctx.bezierCurveTo(18 + tailSway, 26, 28 + tailSway, 50, 32 + tailSway, 72);
+		ctx.strokeStyle = '#ff4081';
+		ctx.lineWidth = 4.2;
+		ctx.lineCap = 'round';
+		ctx.stroke();
+
+		ctx.restore();
+	}
 
 	ctx.restore();
 }
@@ -676,10 +804,55 @@ export function drawFlowerBloom(
 	ctx: CanvasRenderingContext2D,
 	flower: FlowerInstance,
 	progress: number,
-	breezeAngle: number
+	breezeAngle: number,
+	affineTransform?: [number, number, number, number],
+	faceNormalZ?: number
 ) {
 	const localBloom = Math.max(0, Math.min(1.0, (progress - flower.bloomDelay) / flower.bloomDuration));
 	if (localBloom <= 0) return;
+
+	if (affineTransform) {
+		const [a, b, c, d] = affineTransform;
+		ctx.save();
+		// Origin is already at projected flower head
+		const px = flower.projectedX ?? flower.targetX;
+		const py = flower.projectedY ?? flower.targetY;
+		ctx.translate(px, py);
+
+		// Clamp affine foreshortening so flowers never collapse into thin sticks
+		ctx.transform(a, b, c, d, 0, 0);
+
+		// Temporarily zero target coords for relative drawing in transform
+		const origTx = flower.targetX;
+		const origTy = flower.targetY;
+		flower.targetX = 0;
+		flower.targetY = 0;
+
+		switch (flower.type) {
+			case 'lily':
+				drawDetailedLily(ctx, flower, localBloom, breezeAngle);
+				break;
+			case 'rose':
+				drawDetailedRose(ctx, flower, localBloom, breezeAngle);
+				break;
+			case 'tulip':
+				drawDetailedTulip(ctx, flower, localBloom, breezeAngle);
+				break;
+			case 'daisy':
+				drawDetailedDaisy(ctx, flower, localBloom, breezeAngle);
+				break;
+			case 'orchid':
+				drawDetailedOrchid(ctx, flower, localBloom, breezeAngle);
+				break;
+			default:
+				drawDetailedLily(ctx, flower, localBloom, breezeAngle);
+		}
+
+		flower.targetX = origTx;
+		flower.targetY = origTy;
+		ctx.restore();
+		return;
+	}
 
 	switch (flower.type) {
 		case 'lily':
