@@ -3,12 +3,14 @@ import { asciiPlasmaPreset } from './ascii-plasma/index.js';
 import { typographySpiralPreset } from './typography-spiral/index.js';
 import { torusFieldPreset } from './torus-field/index.js';
 import { makeYourOwnPreset } from './make-your-own/index.js';
+import { bloomingBouquetPreset } from './blooming-bouquet/index.js';
 
 export const PRESETS: PresetDefinition[] = [
 	asciiPlasmaPreset,
 	typographySpiralPreset,
 	torusFieldPreset,
-	makeYourOwnPreset
+	makeYourOwnPreset,
+	bloomingBouquetPreset
 ];
 
 export function getPresetBySlug(slug: string): PresetDefinition | undefined {

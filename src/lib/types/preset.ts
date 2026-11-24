@@ -46,13 +46,25 @@ export type ImageControl = {
 	accept?: string;
 };
 
+export type CounterControl = {
+	key: string;
+	label: string;
+	type: 'counter';
+	min?: number;
+	max?: number;
+	step?: number;
+	icon?: string;
+	default: number;
+};
+
 export type ControlSchema =
 	| SliderControl
 	| ColorControl
 	| SelectControl
 	| ToggleControl
 	| TextControl
-	| ImageControl;
+	| ImageControl
+	| CounterControl;
 
 export type PresetParams = Record<string, string | number | boolean>;
 export type RuntimeAssets = Record<string, ImageData | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | unknown>;
